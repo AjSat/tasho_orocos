@@ -83,10 +83,10 @@
       double w[sz_w];
 
       /* Function input and output */
-      const double x_val[] = {1,2,3,4};
+      const double x_val[] = {1,2,3,45,6,7,8,9,10,11};
       const double y_val = 5;
       double res0;
-      double res1[4];
+      double res1[100];
 
       // Allocate memory (thread-safe)
       printf("Ran 1 ");
@@ -102,7 +102,7 @@
       int mem = casadi_c_checkout_id(id);
 
       // Evaluation is thread-safe
-      // if (casadi_c_eval_id(id, arg, res, iw, w, mem)) return 1;
+      if (casadi_c_eval_id(id, arg, res, iw, w, mem)) return 1;
 
       printf("Ran 3 ");
 
