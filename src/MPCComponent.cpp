@@ -65,7 +65,7 @@
       // }
 
       // Identify a Function by name
-      int id = casadi_c_id("jac_fun");
+      int id = casadi_c_id("ocp_fun");
       casadi_int n_in = casadi_c_n_in_id(id);
       casadi_int n_out = casadi_c_n_out_id(id);
 
@@ -75,6 +75,8 @@
       printf("Work vector sizes:\n");
       printf("sz_arg = %lld, sz_res = %lld, sz_iw = %lld, sz_w = %lld\n\n",
           sz_arg, sz_res, sz_iw, sz_w);
+      Logger::In in(this->getName());
+      Logger::log() << Logger::Debug << "Got work ids" << Logger::endl;
 
           /* Allocate input/output buffers and work vectors*/
       const double *arg[sz_arg];
@@ -83,31 +85,74 @@
       double w[sz_w];
 
       /* Function input and output */
-      const double x_val[] = {1,2,3,45,6,7,8,9,10,11};
-      const double y_val = 5;
-      double res0;
-      double res1[100];
+      //parameters that need to be set a0, q_dot0, s0, s_dot0 TODO: read all from orocos ports
+      double q0[14] = {-1.36542319,
+            -0.74822507,
+            2.05658987,
+            0.52732208,
+            2.4950726,
+            -0.93756902,
+            -1.71694542,
+            1.32087,
+            -0.77865726,
+            -2.04601662,
+            0.65292945,
+            -2.25832585,
+            -0.81930464,
+            1.00047389}; //TODO: read from orocos port.
+      double q_dot0[14] = {0,0,0,0,0,0,0,
+      0,0,0,0,0,0,0};
+      double s0[1] = {0};
+      double s_dot0[1] = {0};
+
+
+
+      double x_val[40000];
+      double x_val2[40000];
+      double res0[40000];
+      double res2[40000];
+      for(int i = 0; i < 40000; i++){
+        x_val[i] = 0;
+        x_val2[i] = 0;
+        res0[i] = 0;
+        res2[i] = 0;
+      }
+
+      //Initilializing the parameters to the correct values of x
+      int h_size = 14;
+      int q0_start = 654;
+      int q_start = 0;
+      int q_size = 14;
+      for(int i = 0; i < q_size; i++){
+        x_val[q0_start + i] = q0[i];
+        for(int j = 0; j < h_size; j++){
+          x_val[q_start + j*h_size + i] = q0[i];
+        }
+      }
+
+      for(int i = 0; i < 28; i++){
+        printf("%f\n",x_val[i]);
+      }
 
       // Allocate memory (thread-safe)
-      printf("Ran 1 ");
+      Logger::log() << Logger::Debug << "Allocating memory" << Logger::endl;
       casadi_c_incref_id(id);
 
       /* Evaluate the function */
       arg[0] = x_val;
-      arg[1] = &y_val;
-      res[0] = &res0;
-      res[1] = res1;
-      printf("Ran 2 ");
+      arg[1] = x_val2;
+      res[0] = res0;
+      res[1] = res2;
+      Logger::log() << Logger::Debug << "Creating arguments for casadi function" << Logger::endl;
       // Checkout thread-local memory (not thread-safe)
       int mem = casadi_c_checkout_id(id);
 
       // Evaluation is thread-safe
+      Logger::log() << Logger::Debug << "Evaluating casadi function" << Logger::endl;
       if (casadi_c_eval_id(id, arg, res, iw, w, mem)) return 1;
 
-      printf("Ran 3 ");
 
-      Logger::In in(this->getName());
-      Logger::log() << Logger::Debug << "Entering configuration hook" << Logger::endl;
+      Logger::log() << Logger::Debug << "Exiting configuration hook" << Logger::endl;
       return true;
     }
 
