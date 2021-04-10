@@ -7,7 +7,7 @@ end
 require("rttlib")
 require("rttros")
 require "utils"
-rtt.setLogLevel("Info")
+rtt.setLogLevel("Debug")
 rttlib.color = true
 
 tc=rtt.getTC()
@@ -43,8 +43,8 @@ mpc = depl:getPeer("mpc")
 --6511 is ROB_L 6512 is ROB_R
 mpc:getProperty("mpc_rate"):set(20) -- in Hz
 dir = rtt.provides("ros"):find("yumi_tasho")
-mpc:getProperty("ocp_file"):set(dir .. "/casadi_files/jac_fun_rob.casadi")
-mpc:getProperty("mpc_file"):set(dir .. "/casadi_files/jac_fun_rob.casadi")
+mpc:getProperty("ocp_file"):set(dir .. "/casadi_files/ocp_fun.casadi")
+mpc:getProperty("mpc_file"):set(dir .. "/casadi_files/mpc_fun.casadi")
 mpc:getProperty("predict_file"):set(dir .. "/casadi_files/jac_fun_rob.casadi")
 mpc:getProperty("shift_file"):set(dir .. "/casadi_files/jac_fun_rob.casadi")
 
@@ -131,6 +131,7 @@ mpc:configure()
 -- --sleep(3)
 -- --yumi:gripVacuumRight()
 --
+mpc:start()
 sleep(2)
 --
 mpc:stop()

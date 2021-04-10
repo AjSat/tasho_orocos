@@ -1,5 +1,4 @@
 #include "MPCComponent.hpp"
-#include <casadi/casadi_c.h>
 
 #define M_PI 3.14159265358979323846
 #define TIMEOUT 500 // [ms]
@@ -35,43 +34,39 @@
         m_joint_states.name.resize(p_numjoints);
         m_joint_states.position.resize(p_numjoints);
 
+        //Sanity check on integer types TODO: throw error if fails and move to header
+        if (casadi_c_int_width()!=sizeof(casadi_int)) {
+          printf("Mismatch in integer size\n");
+        }
+        if (casadi_c_real_width()!=sizeof(double)) {
+          printf("Mismatch in double size\n");
+        }
+
+
+
     }
 
     MPCComponent::~MPCComponent()
     {
+
     }
 
     bool MPCComponent::configureHook()
     {
-      //Sanity check on integer types
-      if (casadi_c_int_width()!=sizeof(casadi_int)) {
-        printf("Mismatch in integer size\n");
-        return -1;
-      }
-      if (casadi_c_real_width()!=sizeof(double)) {
-        printf("Mismatch in double size\n");
-        return -1;
-      }
 
-      int ret = casadi_c_push_file(ocp_file.c_str());
-      if (ret) {
+      f_ret = casadi_c_push_file(ocp_file.c_str());
+      if (f_ret) {
         cout << "Failed to load the ocp file " + ocp_file;
         return -1;
       }
-      // ret = casadi_c_push_file(mpc_file.c_str());
-      // if (ret) {
-      //   cout << "Failed to load the mpc file " + mpc_file;
-      //   return -1;
-      // }
-
       // Identify a Function by name
-      int id = casadi_c_id("ocp_fun");
-      casadi_int n_in = casadi_c_n_in_id(id);
-      casadi_int n_out = casadi_c_n_out_id(id);
+      f_id = casadi_c_id("ocp_fun");
+      n_in = casadi_c_n_in_id(f_id);
+      n_out = casadi_c_n_out_id(f_id);
 
-      casadi_int sz_arg=n_in, sz_res=n_out, sz_iw=0, sz_w=0;
+      sz_arg=n_in; sz_res=n_out; sz_iw=0; sz_w=0;
 
-      casadi_c_work_id(id, &sz_arg, &sz_res, &sz_iw, &sz_w);
+      casadi_c_work_id(f_id, &sz_arg, &sz_res, &sz_iw, &sz_w);
       printf("Work vector sizes:\n");
       printf("sz_arg = %lld, sz_res = %lld, sz_iw = %lld, sz_w = %lld\n\n",
           sz_arg, sz_res, sz_iw, sz_w);
@@ -79,10 +74,10 @@
       Logger::log() << Logger::Debug << "Got work ids" << Logger::endl;
 
           /* Allocate input/output buffers and work vectors*/
-      const double *arg[sz_arg];
-      double *res[sz_res];
-      casadi_int iw[sz_iw];
-      double w[sz_w];
+
+      res = new double*[sz_res];
+      iw = new casadi_int[sz_iw];
+      w = new double[70000];
 
       /* Function input and output */
       //parameters that need to be set a0, q_dot0, s0, s_dot0 TODO: read all from orocos ports
@@ -107,11 +102,11 @@
 
 
 
-      double x_val[40000];
-      double x_val2[40000];
-      double res0[40000];
-      double res2[40000];
-      for(int i = 0; i < 40000; i++){
+      x_val = new double[3000];
+      x_val2 = new double[3000];
+      res0 = new double[3000];
+      res2 = new double[3000];
+      for(int i = 0; i < 3000; i++){
         x_val[i] = 0;
         x_val2[i] = 0;
         res0[i] = 0;
@@ -136,7 +131,7 @@
 
       // Allocate memory (thread-safe)
       Logger::log() << Logger::Debug << "Allocating memory" << Logger::endl;
-      casadi_c_incref_id(id);
+      casadi_c_incref_id(f_id);
 
       /* Evaluate the function */
       arg[0] = x_val;
@@ -145,12 +140,48 @@
       res[1] = res2;
       Logger::log() << Logger::Debug << "Creating arguments for casadi function" << Logger::endl;
       // Checkout thread-local memory (not thread-safe)
-      int mem = casadi_c_checkout_id(id);
+      mem = casadi_c_checkout_id(f_id);
 
-      // Evaluation is thread-safe
-      Logger::log() << Logger::Debug << "Evaluating casadi function" << Logger::endl;
-      if (casadi_c_eval_id(id, arg, res, iw, w, mem)) return 1;
+      // Evaluation is thread-safe TODO: add error handling if the OCP fails to find a solution
+      Logger::log() << Logger::Debug << "Evaluating casadi OCP function" << Logger::endl;
 
+      casadi_c_eval_id(f_id, arg, res, iw, w, mem);
+
+      // Load the MPC function if different from the ocp Function
+      if (ocp_file != mpc_file){
+        // Clear the OCP file from memory
+        /* Free memory (thread-safe) */
+        casadi_c_decref_id(f_id);
+        // Clear the last loaded Function(s) from the stack
+        casadi_c_pop();
+
+        //Load the mpc file into memory
+        f_ret = casadi_c_push_file(mpc_file.c_str());
+        if (f_ret) {
+          cout << "Failed to load the mpc file " + mpc_file;
+          return -1;
+        }
+
+        f_id = casadi_c_id("mpc_fun");
+        n_in = casadi_c_n_in_id(f_id);
+        n_out = casadi_c_n_out_id(f_id);
+
+        sz_arg=n_in; sz_res=n_out; sz_iw=0; sz_w=0;
+
+        casadi_c_work_id(f_id, &sz_arg, &sz_res, &sz_iw, &sz_w);
+        printf("Work vector sizes:\n");
+        printf("sz_arg = %lld, sz_res = %lld, sz_iw = %lld, sz_w = %lld\n\n",
+            sz_arg, sz_res, sz_iw, sz_w);
+        Logger::In in(this->getName());
+        Logger::log() << Logger::Debug << "Got work ids for the MPC function" << Logger::endl;
+
+        //Reallocating the space for the work-vector (which may differ with the algorithm)
+        // delete [] w;
+        // w = new double[sz_w];
+        casadi_c_incref_id(f_id);
+        mem = casadi_c_checkout_id(f_id);
+
+      }
 
       Logger::log() << Logger::Debug << "Exiting configuration hook" << Logger::endl;
       return true;
@@ -162,6 +193,7 @@
             Logger::log() << Logger::Debug << "Entering startHook" << Logger::endl;
             Logger::In in(this->getName());
 
+
         return true;
     }
 
@@ -169,11 +201,15 @@
     {
 
         Logger::log() << Logger::Debug << "Entering updateHook" << Logger::endl;
+        arg[0] = res0;
+        res[0] = x_val;
+        casadi_c_eval_id(f_id, arg, res, iw, w, mem);
         this->trigger(); //TODO: shouldn't this trigger be removed?
     }
 
     void MPCComponent::stopHook()
     {
+      Logger::log() << Logger::Debug << "Entering the stopHook" << Logger::endl;
     }
 
     void MPCComponent::cleanupHook()
