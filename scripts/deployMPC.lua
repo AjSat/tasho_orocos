@@ -42,6 +42,7 @@ mpc = depl:getPeer("mpc")
 --Configuration
 --6511 is ROB_L 6512 is ROB_R
 mpc:getProperty("mpc_rate"):set(20) -- in Hz
+mpc:getProperty("horizon"):set(13) -- in Hz
 dir = rtt.provides("ros"):find("yumi_tasho")
 mpc:getProperty("ocp_file"):set(dir .. "/casadi_files/ocp_fun.casadi")
 mpc:getProperty("mpc_file"):set(dir .. "/casadi_files/mpc_fun.casadi")
@@ -135,6 +136,7 @@ mpc:start()
 sleep(2)
 --
 mpc:stop()
+mpc:cleanup()
 -- traj_gen:stop()
 -- Reporter:stop()
 --

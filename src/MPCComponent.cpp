@@ -8,6 +8,7 @@
     {
         //Adding properties
         this->addProperty("mpc_rate", mpc_rate).doc("Control frequency of MPC");
+        this->addProperty("horizon", horizon).doc("Horizon size of the MPC");
         this->addProperty("ocp_file", ocp_file).doc("The casadi file that will compute the OCP.");
         this->addProperty("mpc_file", mpc_file).doc("The casadi file that will compute the MPC.");
         this->addProperty("predict_file", predict_file).doc("The casadi file that will simulate the next state of MPC.");
@@ -15,20 +16,14 @@
         //Adding ports
         /// Input
         this->addPort("event_in", port_ein).doc("Events IN - eg supervisor");
-        this->addPort("JointPositionCommand", port_joint_pos_command).doc("desired joint positions [rad]");
-        this->addPort("JointVelocityCommand", port_joint_vel_command).doc("desired joint velocities [rad/s]");
-        /// Output
-        this->addPort("event_out", port_eout).doc("Events OUT - eg faults to supervisor");
         this->addPort("q_actual", port_q_actual).doc("current joint positions [rad]");
         this->addPort("qdot_actual", port_qdot_actual).doc("current joint velocities [rad/s]");
 
-
-        //Fixed size
-        m_joint_pos_command.positions.resize(p_numjoints);
-        m_joint_vel_command.velocities.resize(p_numjoints);
-
-        m_joint_pos_command.positions.assign(p_numjoints, 0);
-        m_joint_vel_command.velocities.assign(p_numjoints, 0);
+        /// Output
+        this->addPort("event_out", port_eout).doc("Events OUT - eg faults to supervisor");
+        this->addPort("q_command", port_q_command).doc("Desired joint positions [rad]");
+        this->addPort("qdot_command", port_qdot_command).doc("Desired joint velocities [rad/s]");
+        this->addPort("qddot_command", port_qddot_command).doc("Desired joint accelerations [rad/s^2]");
 
 
         m_joint_states.name.resize(p_numjoints);
@@ -114,14 +109,13 @@
       }
 
       //Initilializing the parameters to the correct values of x
-      int h_size = 14;
       int q0_start = 654;
       int q_start = 0;
       int q_size = 14;
       for(int i = 0; i < q_size; i++){
         x_val[q0_start + i] = q0[i];
-        for(int j = 0; j < h_size; j++){
-          x_val[q_start + j*h_size + i] = q0[i];
+        for(int j = 0; j < horizon + 1; j++){
+          x_val[q_start + j*(horizon + 1) + i] = q0[i];
         }
       }
 
@@ -214,7 +208,18 @@
 
     void MPCComponent::cleanupHook()
     {
+      Logger::log() << Logger::Debug << "Entering the cleanupHook" << Logger::endl;
+      casadi_c_decref_id(f_id);
+      // casadi_c_pop();
+      Logger::log() << Logger::Debug << "Exiting the cleanupHook" << Logger::endl;
+    }
 
+    void predictFunction(){
+      // Code to predict the future states based on the dynamics function
+    }
+
+    void shift(){
+      // Code to shift x_vals for proper warm-starting of the MPC
     }
 
 ORO_CREATE_COMPONENT(MPCComponent)

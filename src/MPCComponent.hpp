@@ -77,10 +77,6 @@
 
 
     // Internal, mem alloc
-    motion_control_msgs::JointPositions m_joint_pos_command;
-    motion_control_msgs::JointVelocities m_joint_vel_command;
-    motion_control_msgs::JointEfforts m_joint_effort_command;
-    motion_control_msgs::JointEfforts m_t_ext;
     geometry_msgs::Pose m_cart_pose;
     sensor_msgs::JointState m_joint_states;
     vector<double> m_qdes;
@@ -91,19 +87,18 @@
     // Port Interface
     InputPort<string> port_ein;
     InputPort<vector<double>> port_qdes;
-    InputPort<motion_control_msgs::JointPositions> port_joint_pos_command;
-    InputPort<motion_control_msgs::JointVelocities> port_joint_vel_command;
-    InputPort<motion_control_msgs::JointEfforts> port_joint_effort_command;
-    //
+    InputPort<vector<double>> port_qdot_actual;
+    InputPort<vector<double>> port_q_actual;
+
+    // Output port
     OutputPort<string> port_eout;
-    OutputPort<vector<double>> port_q_actual;
+    OutputPort<vector<double>> port_qdot_command;
+    OutputPort<vector<double>> port_q_command;
+    OutputPort<vector<double>> port_qddot_command;
     OutputPort<vector<double>> port_t_actual;
-    OutputPort<vector<double>> port_qdot_actual;
-    OutputPort<motion_control_msgs::JointPositions> port_joint_pos_msr;
-    OutputPort<motion_control_msgs::JointVelocities> port_joint_vel_received_command;
-    OutputPort<motion_control_msgs::JointEfforts> port_joint_ext_jnt;
-    OutputPort<sensor_msgs::JointState> port_joint_state;
-    OutputPort<geometry_msgs::Pose> port_cart_pose;
+    // OutputPort<motion_control_msgs::JointEfforts> port_joint_ext_jnt;
+    // OutputPort<sensor_msgs::JointState> port_joint_state;
+    // OutputPort<geometry_msgs::Pose> port_cart_pose;
   };
 
 #endif // __ABB_COMPONENT_H__
