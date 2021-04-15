@@ -133,7 +133,7 @@ mpc:configure()
 -- --yumi:gripVacuumRight()
 --
 mpc:start()
-sleep(2)
+sleep(5.0)
 --
 mpc:stop()
 mpc:cleanup()

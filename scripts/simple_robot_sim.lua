@@ -8,6 +8,7 @@ tc=rtt.getTC()
 iface_spec = {
    ports={
       { name='jointpos', datatype='array', type='out', desc="joint positions corresponding to the integrated joint velocities" },
+      { name='jointvel_out', datatype='array', type='out', desc="joint velocities output" },
       { name='jointvel', datatype='array', type='in', desc="joint velocities" },
    },
 
@@ -52,6 +53,7 @@ function updateHook()
         end
     end
     iface.ports.jointpos:write(jvals)
+    iface.ports.jointvel_out:write(vel)
 end
 
 

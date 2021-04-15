@@ -76,22 +76,43 @@
 
       /* Function input and output */
       //parameters that need to be set a0, q_dot0, s0, s_dot0 TODO: read all from orocos ports
-      double q0[14] = {-1.36542319,
-            -0.74822507,
-            2.05658987,
-            0.52732208,
-            2.4950726,
-            -0.93756902,
-            -1.71694542,
-            1.32087,
-            -0.77865726,
-            -2.04601662,
-            0.65292945,
-            -2.25832585,
-            -0.81930464,
-            1.00047389}; //TODO: read from orocos port.
-      double q_dot0[14] = {0,0,0,0,0,0,0,
-      0,0,0,0,0,0,0};
+      double *q0 = new double[14];
+      double *q_dot0 = new double[14];
+      if (port_q_actual.read(m_q_actual) != NoData){
+        printf("Read data!!!");
+        for(int i = 0; i<14; i++){
+          q0[i] = m_q_actual[i];
+        }
+      }
+      else{
+        double q0_def[14] = {-1.36542319,
+              -0.74822507,
+              2.05658987,
+              0.52732208,
+              2.4950726,
+              -0.93756902,
+              -1.71694542,
+              1.32087,
+              -0.77865726,
+              -2.04601662,
+              0.65292945,
+              -2.25832585,
+              -0.81930464,
+              1.00047389}; //Defining default values. TODO: remove
+        for(int i = 0; i<14; i++){
+          q0[i] = q0_def[i];
+        }
+      }
+      if (port_qdot_actual.read(m_qdot_actual) != NoData){
+        for(int i = 0; i<14; i++){
+          q_dot0[i] = m_qdot_actual[i];
+        }
+      }
+      else{
+        double q_dot0_def[14] = {0,0,0,0,0,0,0,
+          0,0,0,0,0,0,0};
+        q_dot0 = q_dot0_def;
+      }
       double s0[1] = {0};
       double s_dot0[1] = {0};
 
@@ -195,8 +216,85 @@
     {
 
         Logger::log() << Logger::Debug << "Entering updateHook" << Logger::endl;
-        arg[0] = res0;
-        res[0] = x_val;
+        if (port_q_actual.read(m_q_actual) == NoData){
+          Logger::log() << Logger::Error << "joint position input port in MPC read no data " << Logger::endl;
+        }
+        if (port_qdot_actual.read(m_qdot_actual) == NoData){
+          Logger::log() << Logger::Error << "joint velocity input port in MPC read no data " << Logger::endl;
+        }
+        //Apply the control inputs
+        //Implementing warm-starting. Hardcoded now, will shift to using the json thing.
+        //warm-starting  the states
+        for(int i = 0; i<14; i++){
+          for(int j = 0; j<14;j++){
+            if(i < 13){
+              x_val[i*14 + j] = res0[(i+1)*14 + j]; //warmstarting q
+              x_val[196 + i*14 + j] = res0[196 + (i+1)*14 + j]; //warmstarting q_dot
+            }
+            else{ //initializing at the last stage
+              x_val[i*14 + j] = res0[(i)*14 + j]; //warmstarting q
+              x_val[196 + i*14 + j] = res0[196 + (i)*14 + j]; //warmstarting q_dot
+            }
+          }
+          if (i < 13){
+          x_val[392 + i] = res0[392 + i + 1]; //warmstart s
+          x_val[406 + i] = res0[406 + i + 1]; //warmstart s_dot
+          }
+          else{
+            x_val[392 + i] = res0[392 + i]; //warmstart s
+            x_val[406 + i] = res0[406 + i]; //warmstart s_dot
+          }
+        }
+
+        //warm-starting the control variables
+        for(int i = 0; i<13; i++){
+          for(int j = 0; j<14;j++){
+            if(i < 12){
+            x_val[420 + i*14 + j] = res0[420 + (i+1)*14 + j]; //warmstarting q_ddot
+            }
+            else{
+              x_val[420 + i*14 + j] = res0[420 + (i)*14 + j];
+            }
+          }
+          for(int j = 0; j<2;j++){
+            if(i < 12){
+            x_val[615 + i*2 + j] = res0[615 + (i+1)*2 + j]; //warmstarting slack_1
+            }
+            else{
+              x_val[615 + i*2 + j] = res0[615 + (i)*2 + j]; //warmstarting slack_1
+            }
+          }
+          if(i < 12){
+            x_val[602 + i] = res0[602 + i + 1]; //warmstart s_ddot
+            x_val[641 + i] = res0[641 + i + 1]; //warmstart slack_2
+          }
+          else{
+            x_val[602 + i] = res0[602 + i]; //warmstart s_ddot
+            x_val[641 + i] = res0[641 + i]; //warmstart slack_2
+          }
+        }
+
+        //Initializing the starting parameters
+        for(int i = 0; i<14; i++){
+          x_val[654 + i] = x_val[i];
+          x_val[668 + i] = x_val[196 + i];
+          x_val[682] = x_val[392];
+          x_val[683] = x_val[406];
+        }
+
+        printf("s value is : %f", x_val[682]);
+
+
+        // if(flag == true){
+        // arg[0] = res0;
+        // res[0] = x_val;
+        // flag = false;
+        // }
+        // else{
+        //   arg[0] = x_val;
+        //   res[0] = res0;
+        //   flag = true;
+        // }
         casadi_c_eval_id(f_id, arg, res, iw, w, mem);
         this->trigger(); //TODO: shouldn't this trigger be removed?
     }

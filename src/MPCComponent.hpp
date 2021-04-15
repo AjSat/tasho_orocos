@@ -71,7 +71,7 @@
     double  *w, *x_val, *x_val2, *res0, *res2;
     double **res;
     const double *arg[250]; //TODO: hardcoded, hope that it is always high enough
-    bool wait;
+    bool wait, flag = true;
     bool first_message;
 
 
