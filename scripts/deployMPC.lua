@@ -52,6 +52,8 @@ mpc:getProperty("shift_file"):set(dir .. "/casadi_files/jac_fun_rob.casadi")
 depl:setActivity("mpc", 0, 99, rtt.globals.ORO_SCHED_RT)
 mpc:setPeriod(0.05)
 cp = rtt.Variable("ConnPolicy")
+cp.type=1   -- type buffered
+cp.size=1  -- buffer size
 
 depl:loadComponent("traj_interp", "OCL::LuaComponent")
 traj_interp = depl:getPeer("traj_interp")

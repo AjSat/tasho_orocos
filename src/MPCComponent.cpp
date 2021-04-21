@@ -25,7 +25,6 @@
         this->addPort("qdot_command", port_qdot_command).doc("Desired joint velocities [rad/s]");
         this->addPort("qddot_command", port_qddot_command).doc("Desired joint accelerations [rad/s^2]");
 
-
         m_joint_states.name.resize(p_numjoints);
         m_joint_states.position.resize(p_numjoints);
 
@@ -78,6 +77,14 @@
       //parameters that need to be set a0, q_dot0, s0, s_dot0 TODO: read all from orocos ports
       double *q0 = new double[14];
       double *q_dot0 = new double[14];
+
+      // Assign a fixed size and memory to the vectors associated with the ports
+      m_q_actual.assign(p_numjoints, 0);
+      m_qdot_actual.assign(p_numjoints, 0);
+      m_q_command.assign(p_numjoints, 0);
+      m_qd_command.assign(p_numjoints, 0);
+      m_qdd_command.assign(p_numjoints, 0);
+
       if (port_q_actual.read(m_q_actual) != NoData){
         // Logger::log() << Logger::Debug << "Read joint pos from robot_sim" << Logger::endl;
         for(int i = 0; i<14; i++){
@@ -105,9 +112,9 @@
         }
       }
       if (port_qdot_actual.read(m_qdot_actual) != NoData){
-        Logger::log() << Logger::Debug << "Read joint vel from robot_sim" << Logger::endl;
+        // Logger::log() << Logger::Debug << "Read joint vel from robot_sim" << Logger::endl;
         for(int i = 0; i<14; i++){
-          Logger::log() << Logger::Debug << "Initializing the joint vel values = " << m_qdot_actual[i] << Logger::endl;
+          // Logger::log() << Logger::Debug << "Initializing the joint vel values = " << m_qdot_actual[i] << Logger::endl;
           q_dot0[i] = m_qdot_actual[i];
         }
       }
@@ -210,44 +217,38 @@
 
             Logger::log() << Logger::Debug << "Entering startHook" << Logger::endl;
             Logger::In in(this->getName());
-
-
         return true;
     }
 
     void MPCComponent::updateHook()
     {
 
-        Logger::log() << Logger::Debug << "Entering updateHook" << Logger::endl;
-        if (port_q_actual.read(m_q_actual) == NoData){
-          Logger::log() << Logger::Error << "joint position input port in MPC read no data " << Logger::endl;
-        }
-        if (port_qdot_actual.read(m_qdot_actual) == NoData){
-          Logger::log() << Logger::Error << "joint velocity input port in MPC read no data " << Logger::endl;
-        }
-        //Apply the control inputs
-        //Implementing warm-starting. Hardcoded now, will shift to using the json thing.
-        //warm-starting  the states
-        for(int i = 0; i<14; i++){
-          for(int j = 0; j<14;j++){
-            if(i < 13){
-              x_val[i*14 + j] = res0[(i+1)*14 + j]; //warmstarting q
-              x_val[196 + i*14 + j] = res0[196 + (i+1)*14 + j]; //warmstarting q_dot
-            }
-            else{ //initializing at the last stage
-              x_val[i*14 + j] = res0[(i)*14 + j]; //warmstarting q
-              x_val[196 + i*14 + j] = res0[196 + (i)*14 + j]; //warmstarting q_dot
-            }
+      Logger::log() << Logger::Debug << "Entering updateHook" << Logger::endl;
+      //Apply the control inputs
+      //Write the q, qd and qdd commands into the respective ports
+      port_writer();
+      //Implementing warm-starting. Hardcoded now, will shift to using the json thing.
+      //warm-starting  the states
+      for(int i = 0; i<14; i++){
+        for(int j = 0; j<14;j++){
+          if(i < 13){
+            x_val[i*14 + j] = res0[(i+1)*14 + j]; //warmstarting q
+            x_val[196 + i*14 + j] = res0[196 + (i+1)*14 + j]; //warmstarting q_dot
           }
-          if (i < 13){
-          x_val[392 + i] = res0[392 + i + 1]; //warmstart s
-          x_val[406 + i] = res0[406 + i + 1]; //warmstart s_dot
-          }
-          else{
-            x_val[392 + i] = res0[392 + i]; //warmstart s
-            x_val[406 + i] = res0[406 + i]; //warmstart s_dot
+          else{ //initializing at the last stage
+            x_val[i*14 + j] = res0[(i)*14 + j]; //warmstarting q
+            x_val[196 + i*14 + j] = res0[196 + (i)*14 + j]; //warmstarting q_dot
           }
         }
+        if (i < 13){
+        x_val[392 + i] = res0[392 + i + 1]; //warmstart s
+        x_val[406 + i] = res0[406 + i + 1]; //warmstart s_dot
+        }
+        else{
+          x_val[392 + i] = res0[392 + i]; //warmstart s
+          x_val[406 + i] = res0[406 + i]; //warmstart s_dot
+        }
+      }
 
         //warm-starting the control variables
         for(int i = 0; i<13; i++){
@@ -284,6 +285,26 @@
           x_val[682] = x_val[392];
           x_val[683] = x_val[406];
         }
+        if (port_q_actual.read(m_q_actual) == NoData){
+          Logger::log() << Logger::Error << "joint position input port in MPC read no data " << Logger::endl;
+        }
+        else{
+          Logger::log() << Logger::Debug << "Read joint pos from robot_sim" << Logger::endl;
+          for(int i = 0; i<14; i++){
+            Logger::log() << Logger::Debug << "jpos from  " << x_val[654 + i] << " to " << m_q_actual[i] + res0[196 + i]*0.05 + 0.5*0.0025*res0[420 + i] <<  Logger::endl;
+            x_val[654 + i] = m_q_actual[i] + res0[196 + i]*0.05 + 0.5*0.0025*res0[420 + i];
+          }
+        }
+        if (port_qdot_actual.read(m_qdot_actual) == NoData){
+          Logger::log() << Logger::Error << "joint velocity input port in MPC read no data " << Logger::endl;
+        }
+        else{
+          Logger::log() << Logger::Debug << "Read joint vel from robot_sim" << Logger::endl;
+          for(int i = 0; i<14; i++){
+            Logger::log() << Logger::Debug << "jvel from " << x_val[668 + i] << " to " << m_qdot_actual[i] + 0.05*res0[420 + i] << Logger::endl;
+            x_val[668 + i] = m_qdot_actual[i] + 0.05*res0[420 + i];
+          }
+        }
 
         printf("s value is : %f", x_val[682]);
 
@@ -299,6 +320,9 @@
         //   flag = true;
         // }
         casadi_c_eval_id(f_id, arg, res, iw, w, mem);
+
+
+
         this->trigger(); //TODO: shouldn't this trigger be removed?
     }
 
@@ -315,6 +339,18 @@
       Logger::log() << Logger::Debug << "Exiting the cleanupHook" << Logger::endl;
     }
 
+    //A function to read the relevant values from xvals and write into ports
+    void MPCComponent::port_writer(){
+      //read values for q_command, q_d_command and q_dd_command
+      for(int i = 0; i < 14; i++){
+        m_q_command[i] = res0[i];
+        m_qd_command[i] = res0[196 + i];
+        m_qdd_command[i] = res0[420 + i];
+      }
+      port_q_command.write(m_q_command);
+      port_qdot_command.write(m_qd_command);
+      port_qddot_command.write(m_qdd_command);
+    }
     void predictFunction(){
       // Code to predict the future states based on the dynamics function
     }

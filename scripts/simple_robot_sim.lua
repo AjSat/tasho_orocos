@@ -53,7 +53,7 @@ function updateHook()
         local dt=tc:getPeriod()
         for i=1,#v do
             -- the arrays are zero-based index, while in LUA it is one-based index.
-            -- Markus: you made life difficult and confusing !
+            -- Markus, you made life difficult and confusing !
             jvals[i-1] = jvals[i-1] + v[i] * dt
         end
       jvel_vals = vel

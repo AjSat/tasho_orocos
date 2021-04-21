@@ -1,9 +1,6 @@
-// Copyright (C) 2019 Wilm Decre <wilm.decre@mech.kuleuven.be>
-// inspired by FRIDriver
-// 2019, KU Leuven, Belgium
 
-#ifndef __ABB_COMPONENT_H__
-#define __ABB_COMPONENT_H__
+#ifndef __MPC_COMPONENT_H__
+#define __MPC_COMPONENT_H__
 
 //casadi specific
 #include <stdio.h>
@@ -45,6 +42,8 @@
 
   private:
 
+    //Functions
+    void port_writer();
     /// Properties
     bool p_simulation;
     const unsigned int p_numjoints;
@@ -83,6 +82,9 @@
     vector<double> m_q_actual;
     vector<double> m_t_actual;
     vector<double> m_qdot_actual;
+    vector<double> m_q_command;
+    vector<double> m_qd_command;
+    vector<double> m_qdd_command;
 
     // Port Interface
     InputPort<string> port_ein;
@@ -101,4 +103,4 @@
     // OutputPort<geometry_msgs::Pose> port_cart_pose;
   };
 
-#endif // __ABB_COMPONENT_H__
+#endif // __MPC_COMPONENT_H__
