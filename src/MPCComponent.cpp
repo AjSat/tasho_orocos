@@ -79,8 +79,9 @@
       double *q0 = new double[14];
       double *q_dot0 = new double[14];
       if (port_q_actual.read(m_q_actual) != NoData){
-        printf("Read data!!!");
+        // Logger::log() << Logger::Debug << "Read joint pos from robot_sim" << Logger::endl;
         for(int i = 0; i<14; i++){
+          // Logger::log() << Logger::Debug << "Initializing the joint values = " << m_q_actual[i] << Logger::endl;
           q0[i] = m_q_actual[i];
         }
       }
@@ -104,7 +105,9 @@
         }
       }
       if (port_qdot_actual.read(m_qdot_actual) != NoData){
+        Logger::log() << Logger::Debug << "Read joint vel from robot_sim" << Logger::endl;
         for(int i = 0; i<14; i++){
+          Logger::log() << Logger::Debug << "Initializing the joint vel values = " << m_qdot_actual[i] << Logger::endl;
           q_dot0[i] = m_qdot_actual[i];
         }
       }

@@ -21,21 +21,26 @@ iface_spec = {
 iface=rttlib.create_if(iface_spec)
 
 jvals=rtt.Variable("array")
+jvel_vals = rtt.Variable("array")
 
 -- The Lua component starts its life in PreOperational, so
 -- configureHook can be used to set stuff up.
 function configureHook()
-    iface=rttlib.create_if(iface_spec)
-    local vals=iface.props.initial_position:get():totab()
-    jvals:fromtab( vals )
+
+    jvals = iface.props.initial_position:get()
     iface.ports.jointpos:write(jvals)
+
+    local temp = {}
+    for i = 1, #jvals:totab() do
+      temp[i] = 0
+    end
+    jvel_vals:fromtab(temp)
+    iface.ports.jointvel_out:write(jvel_vals)
     return true
 end
 
 function startHook()
-    local vals=iface.props.initial_position:get():totab()
-    jvals:fromtab( vals )
-    iface.ports.jointpos:write(jvals)
+    configureHook()
     return true
 end
 
@@ -51,11 +56,16 @@ function updateHook()
             -- Markus: you made life difficult and confusing !
             jvals[i-1] = jvals[i-1] + v[i] * dt
         end
+      jvel_vals = vel
     end
     iface.ports.jointpos:write(jvals)
-    iface.ports.jointvel_out:write(vel)
+    iface.ports.jointvel_out:write(jvel_vals)
+
 end
 
+function stopHook()
+  return true
+end
 
 function cleanupHook()
     rttlib.tc_cleanup()

@@ -43,8 +43,6 @@ iface_spec = {
    }
 }
 
-j_pos_vals =
-
 counter = 0
 iface=rttlib.create_if(iface_spec)
 iface.props.Ts:set(0.05)
@@ -86,18 +84,13 @@ function configureHook()
   if fs ~='NoData' then
     j_vel_vals_actual:fromtab(j_vel:totab())
   end
-
+  --
   fs,j_pos=iface.ports.joint_pos_in_actual:read()
   if fs ~='NoData' then
     j_pos_vals_actual:fromtab(j_pos:totab())
     j_pos_vals_ref:fromtab(j_pos:totab()) --Initializing to this assuming that
     -- the reference from MPC also would have the same value.
   end
-
-  jvvals = rtt.Variable("array")
-  jvvals:fromtab(a)
-  jvals=rtt.Variable("array")
-  jvals:fromtab(b)
 
   return true
 end
@@ -120,7 +113,6 @@ function startHook()
 end
 
 function updateHook()
-
 
   -- Computing the position and velocity references
   for i = 0,ndof-1 do
