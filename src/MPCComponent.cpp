@@ -291,8 +291,8 @@
         else{
           Logger::log() << Logger::Debug << "Read joint pos from robot_sim" << Logger::endl;
           for(int i = 0; i<14; i++){
-            Logger::log() << Logger::Debug << "jpos from  " << x_val[654 + i] << " to " << m_q_actual[i] + res0[196 + i]*0.05 + 0.5*0.0025*res0[420 + i] <<  Logger::endl;
-            x_val[654 + i] = m_q_actual[i] + res0[196 + i]*0.05 + 0.5*0.0025*res0[420 + i];
+            Logger::log() << Logger::Debug << "jpos from  " << x_val[654 + i] << " to " << m_q_actual[i] + res0[196 + i]*0.045 + 0.5*0.0025*res0[420 + i] <<  Logger::endl;
+            x_val[654 + i] = m_q_actual[i] + res0[196 + i]*0.045 + 0.5*0.0025*res0[420 + i];
           }
         }
         if (port_qdot_actual.read(m_qdot_actual) == NoData){
@@ -301,8 +301,9 @@
         else{
           Logger::log() << Logger::Debug << "Read joint vel from robot_sim" << Logger::endl;
           for(int i = 0; i<14; i++){
+            Logger::log() << Logger::Debug << "jval read at the instant = " << m_qdot_actual[i] << Logger::endl;
             Logger::log() << Logger::Debug << "jvel from " << x_val[668 + i] << " to " << m_qdot_actual[i] + 0.05*res0[420 + i] << Logger::endl;
-            x_val[668 + i] = m_qdot_actual[i] + 0.05*res0[420 + i];
+            x_val[668 + i] = m_qdot_actual[i] + 0.045*res0[420 + i];
           }
         }
 

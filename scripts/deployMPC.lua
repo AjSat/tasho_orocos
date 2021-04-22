@@ -7,7 +7,7 @@ end
 require("rttlib")
 require("rttros")
 require "utils"
-rtt.setLogLevel("Debug")
+rtt.setLogLevel("Info")
 rttlib.color = true
 
 tc=rtt.getTC()
@@ -52,8 +52,8 @@ mpc:getProperty("shift_file"):set(dir .. "/casadi_files/jac_fun_rob.casadi")
 depl:setActivity("mpc", 0, 99, rtt.globals.ORO_SCHED_RT)
 mpc:setPeriod(0.05)
 cp = rtt.Variable("ConnPolicy")
-cp.type=1   -- type buffered
-cp.size=1  -- buffer size
+-- cp.type=1   -- type buffered
+-- cp.size=1  -- buffer size
 
 depl:loadComponent("traj_interp", "OCL::LuaComponent")
 traj_interp = depl:getPeer("traj_interp")
@@ -112,7 +112,6 @@ robot_sim:start()
 
 --configure hook of both components
 mpc:configure()
-
 traj_interp:configure()
 -- Reporter:configure()
 --
@@ -132,9 +131,10 @@ traj_interp:configure()
 -- --sleep(3)
 -- --yumi:gripVacuumRight()
 --
+traj_interp:start()
 mpc:start()
 
-traj_interp:start()
+
 
 sleep(5.0)
 -- --
