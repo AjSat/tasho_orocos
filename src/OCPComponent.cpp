@@ -4,13 +4,15 @@
 #define TIMEOUT 500 // [ms]
 
 
-    OCPComponent::OCPComponent(const string &name) : TaskContext(name, PreOperational), p_numjoints(14), horizon(15), degrees_to_radians(M_PI / 180.0),  ocp_rate(10), time(0.0), wait(true)
+    OCPComponent::OCPComponent(const string &name) : TaskContext(name, PreOperational), p_numjoints(14), horizon(15), degrees_to_radians(M_PI / 180.0),  ocp_rate(10), time(0.0), wait(true), p_max_vel(20.0/180*3.14159), p_max_acc(120/180*3.14159)
     {
       //Adding properties
       this->addProperty("ocp_rate", ocp_rate).doc("Sampling rate of the OCP");
       this->addProperty("horizon", horizon).doc("Horizon size of the MPC");
       this->addProperty("ocp_file", ocp_file).doc("The casadi file that will compute the OCP.");
       this->addProperty("qdes", p_qdes).doc("desired final position of the robot.");
+      this->addProperty("max_vel", p_max_vel).doc("Maximum limits on joint velocities (rad/s)");
+      this->addProperty("max_acc", p_max_acc).doc("Maximum limit on acceleration (rad/s^2)");
       //Adding ports
       /// Input
       this->addPort("event_in", port_ein).doc("Events IN - eg supervisor");
@@ -79,7 +81,7 @@
         m_qdd_command.assign(p_numjoints, 0);
 
         if (port_q_actual.read(m_q_actual) != NoData){
-          // Logger::log() << Logger::Debug << "Read joint pos from robot_sim" << Logger::endl;
+          Logger::log() << Logger::Debug << "Read joint pos from robot_sim" << Logger::endl;
           for(int i = 0; i<14; i++){
             // Logger::log() << Logger::Debug << "Initializing the joint values = " << m_q_actual[i] << Logger::endl;
             q0[i] = m_q_actual[i];
@@ -97,23 +99,27 @@
           }
         }
         else{
-          Logger::log() << Logger::Error << "Failed to read robot velocities" << Logger::endl;
-          return false;
+          Logger::log() << Logger::Debug
+          << "Failed to read robot velocities. Assigning zero values." << Logger::endl;
+          double q_dot0_def[14] = {0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0};
+          q_dot0 = q_dot0_def;
         }
 
-        x_val = new double[3000];
-        x_val2 = new double[3000];
-        res0 = new double[3000];
-        res2 = new double[3000];
-        for(int i = 0; i < 3000; i++){
+        x_val = new double[5000];
+        x_val2 = new double[5000];
+        res0 = new double[5000];
+        res2 = new double[5000];
+        for(int i = 0; i < 5000; i++){
           x_val[i] = 0;
           x_val2[i] = 0;
           res0[i] = 0;
           res2[i] = 0;
         }
+        Logger::log() << Logger::Debug << "declared variables" << Logger::endl;
 
         //Initilializing the parameters to the correct values of x
-        int q0_start = 654;
+        int q0_start = 1710;
         int q_start = 0;
         int q_size = 14;
         for(int i = 0; i < q_size; i++){
@@ -123,7 +129,16 @@
           }
         }
 
-        //TODO: add the correct pdes to the parameters
+        Logger::log() << Logger::Debug << "Initialized decision" << Logger::endl;
+
+        //Adding the desired final joint position
+        int qdes_start = 1710;
+        for(int i = 0; i < q_size; i++){
+          x_val[qdes_start + i] = p_qdes[i];
+        }
+
+        x_val[1709] = p_max_acc; //setting maximum acceleration.
+        x_val[1708] = p_max_vel; //setting maximum velocity
 
         // Allocate memory (thread-safe)
         Logger::log() << Logger::Debug << "Allocating memory" << Logger::endl;
@@ -165,8 +180,8 @@
       //read values for q_command, q_d_command and q_dd_command
       for(int i = 0; i < 14; i++){
         m_q_command[i] = res0[i + sequence*14];
-        m_qd_command[i] = res0[196 + i + sequence*14];
-        m_qdd_command[i] = res0[420 + i + sequence*14];
+        m_qd_command[i] = res0[574 + i + sequence*14];
+        m_qdd_command[i] = res0[1148 + i + sequence*14];
       }
       //Write the q, qd and qdd commands into the respective ports
       port_q_command.write(m_q_command);

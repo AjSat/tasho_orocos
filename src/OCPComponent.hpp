@@ -46,7 +46,7 @@
     void port_writer();
     /// Properties
     const unsigned int p_numjoints;
-    unsigned int p_egm_port;
+    double p_max_vel, p_max_acc;
     string ocp_file;
     const double degrees_to_radians;
     double Kpos;
