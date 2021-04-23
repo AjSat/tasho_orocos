@@ -8,8 +8,8 @@ find_package(catkin REQUIRED)
 
 orocos_component(MPCComponent MPCComponent.hpp MPCComponent.cpp) # ...you may add multiple source files
 orocos_install_headers(MPCComponent.hpp) # ...you may add multiple header files
-orocos_component(HOMINGComponent HOMINGComponent.hpp HOMINGComponent.cpp) # ...you may add multiple source files
-orocos_install_headers(HOMINGComponent.hpp) # ...you may add multiple header files
+orocos_component(OCPComponent OCPComponent.hpp OCPComponent.cpp) # ...you may add multiple source files
+orocos_install_headers(OCPComponent.hpp) # ...you may add multiple header files
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
