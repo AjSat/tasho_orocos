@@ -83,7 +83,7 @@
         if (port_q_actual.read(m_q_actual) != NoData){
           Logger::log() << Logger::Debug << "Read joint pos from robot_sim" << Logger::endl;
           for(int i = 0; i<14; i++){
-            // Logger::log() << Logger::Debug << "Initializing the joint values = " << m_q_actual[i] << Logger::endl;
+            Logger::log() << Logger::Debug << "Initializing the joint values = " << m_q_actual[i] << Logger::endl;
             q0[i] = m_q_actual[i];
           }
         }
@@ -132,7 +132,7 @@
         Logger::log() << Logger::Debug << "Initialized decision" << Logger::endl;
 
         //Adding the desired final joint position
-        int qdes_start = 1710;
+        int qdes_start = 1724;
         for(int i = 0; i < q_size; i++){
           x_val[qdes_start + i] = p_qdes[i];
         }
@@ -187,6 +187,7 @@
       port_q_command.write(m_q_command);
       port_qdot_command.write(m_qd_command);
       port_qddot_command.write(m_qdd_command);
+      sequence++;
       this->trigger(); //TODO: shouldn't this trigger be removed?
     }
 

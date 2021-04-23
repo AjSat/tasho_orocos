@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<launch>
+      <!-- this argument you can pass this launch file-->
+  <arg name="hardware_interface" default="EffortJointInterface"/>
+
+ <!-- Load the URDF with the given hardware interface into the ROS Parameter Server -->
+  <param name="robot_description" textfile="$(find yumi_description)/urdf/yumi.urdf" />
+  <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" />
+  <node name="joint_state_publisher" pkg="yumi_tasho" type="joint_state_publisher.py" />
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find yumi_tasho)/launch/yumi.rviz"/>
+
+
+<!--
+      <include file="$(find rtt_ros)/launch/rttlua.launch">
+        <arg name="RTTLUA_ARGS" value="$(find yumi_etasl_apps)/cartesian_trj_1/deploy.lua"/>
+        <arg name="INTERACTIVE" value="true"/>
+        <arg name="DEBUG" value="false"/>
+    </include>
+-->
+</launch>

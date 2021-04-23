@@ -6,43 +6,44 @@ function sleep(n)
   os.execute("sleep " .. tonumber(n))
 end
 
+
 require("rttlib")
 require("rttros")
 require "utils"
 rtt.setLogLevel("Debug")
 rttlib.color = true
-
+gs = rtt.provides()
 tc=rtt.getTC()
 depl=tc:getPeer("Deployer")
 samplefreq = 250
 
-depl:import("rtt_rospack")
+-- ros:import("rtt_rospack")
 depl:import("rtt_ros")
+ros = gs:provides("ros")
+
+-- Loading ROS based libraries
+ros:import("rtt_rospack")
+depl:import("rtt_std_msgs")
+
+ros:import("yumi_tasho")
+depl:import("yumi_tasho")
 depl:import("rtt_sensor_msgs")
 depl:import("rtt_motion_control_msgs")
 
--- Loading ROS based libraries
-
-gs = rtt.provides()
-ros = gs:provides("ros")
-depl:import('rtt_rosnode')
-ros:import("rtt_rospack")
-depl:import("yumi_tasho")
-
 depl:loadComponent("ocp", "OCPComponent")
 ocp = depl:getPeer("ocp")
-
+ros:import("etasl_iohandler_jointstate")
 --Configuration
 --6511 is ROB_L 6512 is ROB_R
 ocp:getProperty("ocp_rate"):set(10) -- in Hz
 ocp:getProperty("horizon"):set(40) -- in Hz
-dir = rtt.provides("ros"):find("yumi_tasho")
+dir = ros:find("yumi_tasho")
 ocp:getProperty("ocp_file"):set(dir .. "/casadi_files/homing_ocp.casadi")
 
 home_pos = rtt.Variable("array")
-home_pos:fromtab({0, -2.26, -2.35, 0.52, 0.025, 0.749, 0, -0.19690, -2.33, 1.95, 0.6580, 0.2390, 0.3770, -0.4250})
+home_pos:fromtab({ -0.19690, -2.33, 1.95, 0.6580, 0.2390, 0.3770, -0.4250, 0, -2.26, -2.35, 0.52, 0.025, 0.749, 0,})
 ocp:getProperty("qdes"):set(home_pos)
-ocp:getProperty("max_vel"):set(20/180.0*3.14159)
+ocp:getProperty("max_vel"):set(70/180.0*3.14159)
 ocp:getProperty("max_acc"):set(120/180*3.14159)
 
 
@@ -74,6 +75,8 @@ depl:connectPeers("robot_sim","traj_interp")
 depl:connectPeers("robot_sim","ocp")
 depl:connectPeers("traj_interp","ocp")
 
+
+
 -- Connecting the ports between the components
 depl:connect("traj_interp.joint_vel_out_arr", "robot_sim.jointvel", cp)
 depl:connect("robot_sim.jointpos", "ocp.q_actual", cp)
@@ -81,7 +84,8 @@ depl:connect("robot_sim.jointvel_out", "ocp.qdot_actual", cp)
 depl:connect("traj_interp.joint_pos_in_ref", "ocp.q_command", cp)
 depl:connect("traj_interp.joint_vel_in_ref", "ocp.qdot_command", cp)
 depl:connect("traj_interp.joint_acc_in_ref", "ocp.qddot_command", cp)
-
+depl:stream("robot_sim.jointpos", ros:topic("/joint_states_from_orocos"))
+-- depl:stream("ocp.q_command", ros:topic("/joint_states_from_orocos"))
 robot_sim:configure()
 robot_sim:start()
 --configure hook of both components

@@ -85,7 +85,8 @@ depl:connect("robot_sim.jointvel_out", "mpc.qdot_actual", cp)
 depl:connect("traj_interp.joint_pos_in_ref", "mpc.q_command", cp)
 depl:connect("traj_interp.joint_vel_in_ref", "mpc.qdot_command", cp)
 depl:connect("traj_interp.joint_acc_in_ref", "mpc.qddot_command", cp)
-
+ros:import("etasl_iohandler_jointstate")
+depl:stream("robot_sim.jointpos", ros:topic("/joint_states_from_orocos"))
 robot_sim:configure()
 robot_sim:start()
 --
