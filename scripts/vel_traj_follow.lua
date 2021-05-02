@@ -21,7 +21,7 @@ end
 
 iface_spec = {
    ports={
-      { name='joint_vel_out_cmsg', datatype='motion_control_msgs/JointVelocities', type='out', desc="joint velocity output as motion control msg" },
+      { name='joint_vel_out_l_cmsg', datatype='motion_control_msgs/JointVelocities', type='out', desc="joint velocity output as motion control msg" },
       { name='joint_vel_out_arr', datatype='array', type='out', desc="joint velocity output as an array" },
       { name='joint_pos_out', datatype='array', type='out', desc="joint position output" },
       { name='joint_pos_in_actual', datatype='array', type='in', desc="joint position read from robot joint encoder" },
@@ -121,20 +121,20 @@ function updateHook()
   end
   -- Reading references from the MPC if available
   fs,j_accr=iface.ports.joint_acc_in_ref:read()
-  if fs ~='NoData' and j_accr[0] ~= j_acc_vals[0] then
+  if fs ~='NoData' and (j_accr[0] ~= j_acc_vals[0] or j_accr[7] ~= j_acc_vals[7]) then
    -- print("Reading acceleration reference")
    j_acc_vals:fromtab(j_accr:totab())
 
-  fs,j_velr=iface.ports.joint_vel_in_ref:read()
-  if fs ~='NoData' then
-    -- print("Reading velocity reference")
-    j_vel_vals_ref:fromtab(j_velr:totab())
-  end
-  fs,j_posr=iface.ports.joint_pos_in_ref:read()
-  if fs ~='NoData' then
-    -- print("Reading position reference")
-    j_pos_vals_ref:fromtab(j_posr:totab())
-  end
+   fs,j_velr=iface.ports.joint_vel_in_ref:read()
+   if fs ~='NoData' then
+     -- print("Reading velocity reference")
+     j_vel_vals_ref:fromtab(j_velr:totab())
+   end
+   fs,j_posr=iface.ports.joint_pos_in_ref:read()
+   if fs ~='NoData' then
+     -- print("Reading position reference")
+     j_pos_vals_ref:fromtab(j_posr:totab())
+   end
   end
 
   -- print("position reference:")

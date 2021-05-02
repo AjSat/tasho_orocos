@@ -45,32 +45,33 @@
     //Functions
     void port_writer();
     /// Properties
-    const unsigned int p_numjoints;
+    unsigned int p_numjoints;
     double p_max_vel, p_max_acc;
-    string ocp_file;
+    string ocp_file, ocp_fun;
     const double degrees_to_radians;
     double Kpos;
     // TODO: egm_rate is currently not used!
     double ocp_rate;
-    int horizon;
+    int horizon, q0_start, qdot0_start, q_start, q_dot_start, q_ddot_start, goal_start, max_vel_loc, max_acc_loc;
 
     //const unsigned int egm_rate;  // [Hz] (EGM communication rate, specified by the EGMActJoint RAPID instruction)
     int sequence = 0; // [-] (sequence number of a received EGM message)
     double time;                  // [seconds] (elapsed time during an EGM communication session)
 
-    int f_id, f_ret, mem;
+    int i, f_id, f_ret, mem;
     casadi_int n_in, n_out, sz_arg, sz_res, sz_iw, sz_w, *iw;
     double  *w, *x_val, *x_val2, *res0, *res2;
     double **res;
     const double *arg[250]; //TODO: hardcoded, hope that it is always high enough
     bool wait, flag = true;
-    bool first_message;
+    bool first_message, p_left_arm, p_joint_space;
 
 
 
     // Internal, mem alloc
     sensor_msgs::JointState m_joint_states;
     vector<double> p_qdes;
+    vector<double> p_fk_des;
     vector<double> m_q_actual;
     vector<double> m_t_actual;
     vector<double> m_qdot_actual;

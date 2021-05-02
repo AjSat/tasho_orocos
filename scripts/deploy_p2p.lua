@@ -16,6 +16,7 @@ gs = rtt.provides()
 tc=rtt.getTC()
 depl=tc:getPeer("Deployer")
 samplefreq = 250
+move_left_arm = true
 
 -- ros:import("rtt_rospack")
 depl:import("rtt_ros")
@@ -36,23 +37,25 @@ ros:import("etasl_iohandler_jointstate")
 --Configuration
 --6511 is ROB_L 6512 is ROB_R
 ocp:getProperty("ocp_rate"):set(10) -- in Hz
-ocp:getProperty("horizon"):set(40) -- in Hz
+ocp:getProperty("num_joints"):set(7) -- in Hz
+ocp:getProperty("horizon"):set(40) -- number of sampling steps
 dir = ros:find("yumi_tasho")
-ocp:getProperty("ocp_file"):set(dir .. "/casadi_files/homing_ocp.casadi")
+ocp:getProperty("ocp_file"):set(dir .. "/casadi_files/rightp2p_ocp_fun.casadi")
 
-home_pos = rtt.Variable("array")
-home_pos:fromtab({ -0.19690, -2.33, 1.95, 0.6580, 0.2390, 0.3770, -0.4250, 0, -2.26, -2.35, 0.52, 0.025, 0.749, 0,})
-ocp:getProperty("qdes"):set(home_pos)
-ocp:getProperty("max_vel"):set(50/180.0*3.14159)
-ocp:getProperty("max_acc"):set(120/180*3.14159)
-ocp:getProperty("joint_pos"):set(true)
-
+fk_des = rtt.Variable("array")
+-- fk_des:fromtab({ 1.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, -1.0, 0.4, 0.4, 0.4}) --left
+fk_des:fromtab({ 1.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, -1.0, 0.4, -0.4, 0.4}) --left
+ocp:getProperty("fk_des"):set(fk_des)
+ocp:getProperty("max_vel"):set(120/180.0*3.14159)
+ocp:getProperty("max_acc"):set(240/180*3.14159)
+ocp:getProperty("joint_pos"):set(false)
+ocp:getProperty("move_left_arm"):set(false)
 
 depl:setActivity("ocp", 0, 99, rtt.globals.ORO_SCHED_RT)
 ocp:setPeriod(0.1)
 cp = rtt.Variable("ConnPolicy")
--- cp.type=1   -- type buffered
--- cp.size=1  -- buffer size
+cp.type=1   -- type buffered
+cp.size=1  -- buffer size
 
 depl:loadComponent("traj_interp", "OCL::LuaComponent")
 traj_interp = depl:getPeer("traj_interp")
