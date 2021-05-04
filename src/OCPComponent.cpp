@@ -209,8 +209,8 @@
         // }
 
         // bool solver_status = casadi_c_eval_id(f_id, arg, res, iw, w, mem);
-        bool solver_status = ocp_function(arg, res, iw, w, mem);
-        // bool solver_status = ocp_function(casadi::get_ptr(arg),casadi::get_ptr(res),casadi::get_ptr(iw),casadi::get_ptr(w), mem);
+        int solver_status = ocp_function(arg, res, iw, w, mem);
+        // int solver_status = ocp_function(casadi::get_ptr(arg),casadi::get_ptr(res),casadi::get_ptr(iw),casadi::get_ptr(w), mem);
 
         Logger::log() << Logger::Error << "Solver status = " << solver_status << Logger::endl;
         if(solver_status){
