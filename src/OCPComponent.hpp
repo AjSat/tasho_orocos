@@ -5,6 +5,8 @@
 //casadi specific
 #include <stdio.h>
 #include <casadi/casadi_c.h>
+#include <casadi/casadi.hpp>
+
 
 // OROCOS-rtt specific
 #include <rtt/RTT.hpp>
@@ -73,7 +75,7 @@
     std::vector<casadi_int> iw;
     std::vector<double> w;
     int mem;
-
+    casadi::Function ocp_function;
 
 
     // Internal, mem alloc

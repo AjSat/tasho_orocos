@@ -49,7 +49,7 @@
         Logger::In in(this->getName());
         Logger::log() << Logger::Debug << "Entering configuration hook" << Logger::endl;
 
-        casadi::Function ocp_function = casadi::Function::load(ocp_file);
+        ocp_function = casadi::Function::load(ocp_file);
 
         f_ret = casadi_c_push_file(ocp_file.c_str());
         if (f_ret) {
