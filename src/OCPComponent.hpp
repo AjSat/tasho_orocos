@@ -47,12 +47,11 @@
     /// Properties
     unsigned int p_numjoints;
     double p_max_vel, p_max_acc;
-    string ocp_file, ocp_fun;
+    string p_ocp_file;
     const double degrees_to_radians;
-    double Kpos;
     // TODO: egm_rate is currently not used!
-    double ocp_rate;
-    int horizon, q0_start, qdot0_start, q_start, q_dot_start, q_ddot_start, goal_start, max_vel_loc, max_acc_loc;
+    double p_ocp_rate;
+    int p_horizon, q0_start, qdot0_start, q_start, q_dot_start, q_ddot_start, goal_start, max_vel_loc, max_acc_loc;
 
     //const unsigned int egm_rate;  // [Hz] (EGM communication rate, specified by the EGMActJoint RAPID instruction)
     int sequence = 0; // [-] (sequence number of a received EGM message)

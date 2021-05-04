@@ -4,13 +4,13 @@
 #define TIMEOUT 500 // [ms]
 
 
-    OCPComponent::OCPComponent(const string &name) : TaskContext(name, PreOperational), p_numjoints(14), horizon(15), degrees_to_radians(M_PI / 180.0),  ocp_rate(10), time(0.0), wait(true), p_max_vel(20.0/180*3.14159), p_joint_space(true), p_max_acc(120/180*3.14159), p_left_arm(true)
+    OCPComponent::OCPComponent(const string &name) : TaskContext(name, PreOperational), p_numjoints(14), p_horizon(15), degrees_to_radians(M_PI / 180.0),  p_ocp_rate(10), time(0.0), wait(true), p_max_vel(20.0/180*3.14159), p_joint_space(true), p_max_acc(120/180*3.14159), p_left_arm(true)
     {
       //Adding properties
-      this->addProperty("ocp_rate", ocp_rate).doc("Sampling rate of the OCP");
+      this->addProperty("ocp_rate", p_ocp_rate).doc("Sampling rate of the OCP");
       this->addProperty("num_joints", p_numjoints).doc("Number of joints");
-      this->addProperty("horizon", horizon).doc("Horizon size of the MPC");
-      this->addProperty("ocp_file", ocp_file).doc("The casadi file that will compute the OCP.");
+      this->addProperty("horizon", p_horizon).doc("Horizon size of the MPC");
+      this->addProperty("ocp_file", p_ocp_file).doc("The casadi file that will compute the OCP.");
       this->addProperty("qdes", p_qdes).doc("desired final position of the robot.");
       this->addProperty("fk_des", p_fk_des).doc("Desired final pose of the robot arm. (12,1)");
       this->addProperty("move_left_arm", p_left_arm).doc("Set to true to move left arm,false for right arm.");
@@ -48,9 +48,9 @@
 
         Logger::In in(this->getName());
         Logger::log() << Logger::Debug << "Entering configuration hook" << Logger::endl;
-        f_ret = casadi_c_push_file(ocp_file.c_str());
+        f_ret = casadi_c_push_file(p_ocp_file.c_str());
         if (f_ret) {
-          cout << "Failed to load the ocp file " + ocp_file;
+          cout << "Failed to load the ocp file " + p_ocp_file;
           return -1;
         }
         // Identify a Function by name
@@ -144,8 +144,8 @@
         //Initilializing the parameters to the correct values of x
         for(int i = 0; i < p_numjoints; i++){
           x_val[q0_start + i] = q0[i];
-          for(int j = 0; j < horizon + 1; j++){
-            x_val[q_start + j*(horizon + 1) + i] = q0[i];
+          for(int j = 0; j < p_horizon + 1; j++){
+            x_val[q_start + j*(p_horizon + 1) + i] = q0[i];
           }
         }
 
@@ -214,7 +214,7 @@
       //Apply the control inputs
       //read values for q_command, q_d_command and q_dd_command
       // Logger::log() << Logger::Debug << (!p_joint_space && !p_left_arm) << Logger::endl;
-      if(sequence < horizon){
+      if(sequence < p_horizon){
         if(p_joint_space){
           for(i = 0; i < p_numjoints; i++){
             m_q_command[i] = res0[i +  sequence*p_numjoints];
@@ -241,13 +241,13 @@
           }
         }
       }
-      else if(sequence == horizon){
+      else if(sequence == p_horizon){
         for(i = 0; i < 14; i++){
           m_qd_command[i] = 0;
           m_qdd_command[i] = 0;
         }
         Logger::log() << Logger::Debug << "OCP finished: writing event" << Logger::endl;
-        port_eout.write(ocp_file + "_ocp_done");
+        port_eout.write(p_ocp_file + "_ocp_done");
       }
       //Write the q, qd and qdd commands into the respective ports
       port_q_command.write(m_q_command);

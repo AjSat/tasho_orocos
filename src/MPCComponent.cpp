@@ -4,15 +4,15 @@
 #define TIMEOUT 500 // [ms]
 
 
-    MPCComponent::MPCComponent(const string &name) : TaskContext(name, PreOperational), p_numjoints(14), horizon(15), degrees_to_radians(M_PI / 180.0),  mpc_rate(20), time(0.0), wait(true)
+    MPCComponent::MPCComponent(const string &name) : TaskContext(name, PreOperational), p_numjoints(14), p_horizon(15), degrees_to_radians(M_PI / 180.0),  p_mpc_rate(20), time(0.0), wait(true)
     {
         //Adding properties
-        this->addProperty("mpc_rate", mpc_rate).doc("Control frequency of MPC");
-        this->addProperty("horizon", horizon).doc("Horizon size of the MPC");
-        this->addProperty("ocp_file", ocp_file).doc("The casadi file that will compute the OCP.");
-        this->addProperty("mpc_file", mpc_file).doc("The casadi file that will compute the MPC.");
-        this->addProperty("predict_file", predict_file).doc("The casadi file that will simulate the next state of MPC.");
-        this->addProperty("shift_file", shift_file).doc("The casadi file that will shift the MPC horizon by one step.");
+        this->addProperty("mpc_rate", p_mpc_rate).doc("Control frequency of MPC");
+        this->addProperty("p_horizon", p_horizon).doc("Horizon size of the MPC");
+        this->addProperty("ocp_file", p_ocp_file).doc("The casadi file that will compute the OCP.");
+        this->addProperty("mpc_file", p_mpc_file).doc("The casadi file that will compute the MPC.");
+        this->addProperty("predict_file", p_predict_file).doc("The casadi file that will simulate the next state of MPC.");
+        this->addProperty("shift_file", p_shift_file).doc("The casadi file that will shift the MPC horizon by one step.");
         //Adding ports
         /// Input
         this->addPort("event_in", port_ein).doc("Events IN - eg supervisor");
@@ -48,9 +48,9 @@
     bool MPCComponent::configureHook()
     {
 
-      f_ret = casadi_c_push_file(ocp_file.c_str());
+      f_ret = casadi_c_push_file(p_ocp_file.c_str());
       if (f_ret) {
-        cout << "Failed to load the ocp file " + ocp_file;
+        cout << "Failed to load the ocp file " + p_ocp_file;
         return -1;
       }
       // Identify a Function by name
@@ -145,8 +145,8 @@
       int q_size = 14;
       for(int i = 0; i < q_size; i++){
         x_val[q0_start + i] = q0[i];
-        for(int j = 0; j < horizon + 1; j++){
-          x_val[q_start + j*(horizon + 1) + i] = q0[i];
+        for(int j = 0; j < p_horizon + 1; j++){
+          x_val[q_start + j*(p_horizon + 1) + i] = q0[i];
         }
       }
 
@@ -173,7 +173,7 @@
       casadi_c_eval_id(f_id, arg, res, iw, w, mem);
 
       // Load the MPC function if different from the ocp Function
-      if (ocp_file != mpc_file){
+      if (p_ocp_file != p_mpc_file){
         // Clear the OCP file from memory
         /* Free memory (thread-safe) */
         casadi_c_decref_id(f_id);
@@ -181,9 +181,9 @@
         casadi_c_pop();
 
         //Load the mpc file into memory
-        f_ret = casadi_c_push_file(mpc_file.c_str());
+        f_ret = casadi_c_push_file(p_mpc_file.c_str());
         if (f_ret) {
-          cout << "Failed to load the mpc file " + mpc_file;
+          cout << "Failed to load the mpc file " + p_mpc_file;
           return -1;
         }
 
@@ -315,7 +315,7 @@
         //Monitor if the termination criteria is reached
         if(x_val[term_cond_pos] >= 6.14){
           Logger::log() << Logger::Debug << "*** MPC termination criteria reached: writing event ***" << Logger::endl;
-          port_eout.write(mpc_file + "_mpc_done");
+          port_eout.write(p_mpc_file + "_mpc_done");
           terminated = true;
         }
 

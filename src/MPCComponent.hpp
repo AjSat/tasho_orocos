@@ -51,15 +51,14 @@
     unsigned int p_egm_port;
     string p_baseframe;
     string p_effort_origin;
-    string ocp_file;
-    string mpc_file;
-    string predict_file;
-    string shift_file;
+    string p_ocp_file;
+    string p_mpc_file;
+    string p_predict_file;
+    string p_shift_file;
     const double degrees_to_radians;
-    double Kpos;
     // TODO: egm_rate is currently not used!
-    double mpc_rate;
-    int horizon;
+    double p_mpc_rate;
+    int p_horizon;
 
     //const unsigned int egm_rate;  // [Hz] (EGM communication rate, specified by the EGMActJoint RAPID instruction)
     unsigned int sequence_number; // [-] (sequence number of a received EGM message)
