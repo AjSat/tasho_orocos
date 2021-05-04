@@ -48,19 +48,30 @@
 
         Logger::In in(this->getName());
         Logger::log() << Logger::Debug << "Entering configuration hook" << Logger::endl;
+
+        casadi::Function ocp_function = casadi::Function::load(ocp_file);
+
         f_ret = casadi_c_push_file(ocp_file.c_str());
         if (f_ret) {
           cout << "Failed to load the ocp file " + ocp_file;
           return -1;
         }
         // Identify a Function by name
-        f_id = casadi_c_id("ocp_fun");
-        n_in = casadi_c_n_in_id(f_id);
-        n_out = casadi_c_n_out_id(f_id);
+        // f_id = casadi_c_id("ocp_fun");
+        // n_in = casadi_c_n_in_id(f_id);
+        // n_out = casadi_c_n_out_id(f_id);
 
-        sz_arg=n_in; sz_res=n_out; sz_iw=0; sz_w=0;
+        // sz_arg=n_in; sz_res=n_out; sz_iw=0; sz_w=0;
 
-        casadi_c_work_id(f_id, &sz_arg, &sz_res, &sz_iw, &sz_w);
+        n_in = ocp_function.n_in();
+        n_out = ocp_function.n_out();
+        sz_arg = ocp_function.sz_arg();
+        sz_res = ocp_function.sz_res();
+        sz_iw = ocp_function.sz_iw();
+        sz_w = ocp_function.sz_w();
+
+        
+        // casadi_c_work_id(f_id, &sz_arg, &sz_res, &sz_iw, &sz_w);
         printf("Work vector sizes:\n");
         printf("sz_arg = %lld, sz_res = %lld, sz_iw = %lld, sz_w = %lld\n\n",
             sz_arg, sz_res, sz_iw, sz_w);
@@ -68,9 +79,14 @@
 
             /* Allocate input/output buffers and work vectors*/
 
-        res = new double*[sz_res];
-        iw = new casadi_int[sz_iw];
-        w = new double[70000];
+        // res = new double*[sz_res];
+        // iw = new casadi_int[sz_iw];
+        // w = new double[sz_w];
+
+        arg.resize(sz_arg);
+        res.resize(sz_res);
+        iw.resize(sz_iw);
+        w.resize(sz_w);
 
         /* Function input and output */
         //parameters that need to be set a0, q_dot0, s0, s_dot0 TODO: read all from orocos ports
@@ -175,10 +191,15 @@
         arg[1] = x_val2;
         res[0] = res0;
         res[1] = res2;
+        // arg[0] = casadi::get_ptr(x_val);
+        // arg[1] = casadi::get_ptr(x_val2);
+        // res[0] = casadi::get_ptr(res0);
+        // res[1] = casadi::get_ptr(res2);
         Logger::log() << Logger::Debug << "Creating arguments for casadi function" << Logger::endl;
 
         // Checkout thread-local memory (not thread-safe)
-        mem = casadi_c_checkout_id(f_id);
+        // mem = casadi_c_checkout_id(f_id);
+        mem = ocp_function.checkout();
 
         // Evaluation is thread-safe TODO: add error handling if the OCP fails to find a solution
         Logger::log() << Logger::Debug << "Evaluating casadi OCP function" << Logger::endl;
@@ -187,7 +208,10 @@
         //   m_qdd_command[i] = 0.0;
         // }
 
-        bool solver_status = casadi_c_eval_id(f_id, arg, res, iw, w, mem);
+        // bool solver_status = casadi_c_eval_id(f_id, arg, res, iw, w, mem);
+        bool solver_status = ocp_function(arg, res, iw, w, mem);
+        // bool solver_status = ocp_function(casadi::get_ptr(arg),casadi::get_ptr(res),casadi::get_ptr(iw),casadi::get_ptr(w), mem);
+
         Logger::log() << Logger::Error << "Solver status = " << solver_status << Logger::endl;
         if(solver_status){
           Logger::log() << Logger::Error << "OCP computation failed" << Logger::endl;
