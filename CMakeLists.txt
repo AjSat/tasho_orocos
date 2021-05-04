@@ -149,7 +149,7 @@ ${catkin_INCLUDE_DIRS}
 # set(CASADI_DIR "/home/alejandro/miniconda3/envs/tasho/lib/python3.6/site-packages/casadi")
 
 set(CASADI_DIR "/home/ajay/env37/lib/python3.7/site-packages/casadi")
-include_directories("${CASADI_DIR}//include")
+include_directories("${CASADI_DIR}/include")
 link_libraries(${MPCComponent} "${CASADI_DIR}/libcasadi.so")
 link_libraries(${OCPComponent} "${CASADI_DIR}/libcasadi.so")
 
