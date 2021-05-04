@@ -10,7 +10,7 @@ end
 require("rttlib")
 require("rttros")
 require "utils"
-rtt.setLogLevel("Debug")
+rtt.setLogLevel("Error")
 rttlib.color = true
 gs = rtt.provides()
 tc=rtt.getTC()
@@ -88,6 +88,7 @@ depl:connect("traj_interp.joint_pos_in_actual", "robot_sim.jointpos", cp)
 depl:connect("robot_sim.jointpos", "ocp.q_actual", cp)
 depl:connect("robot_sim.jointvel_out", "ocp.qdot_actual", cp)
 depl:connect("traj_interp.joint_pos_in_ref", "ocp.q_command", cp)
+depl:connect("traj_interp.event_in", "ocp.event_out", cp)
 depl:connect("traj_interp.joint_vel_in_ref", "ocp.qdot_command", cp)
 depl:connect("traj_interp.joint_acc_in_ref", "ocp.qddot_command", cp)
 depl:stream("robot_sim.jointpos", ros:topic("/joint_states_from_orocos"))

@@ -224,37 +224,40 @@
     {
 
       Logger::log() << Logger::Debug << "Entering updateHook" << Logger::endl;
+      term_cond_pos = 682;
       //Apply the control inputs
-      //Write the q, qd and qdd commands into the respective ports
-      port_writer();
-      //Implementing warm-starting. Hardcoded now, will shift to using the json thing.
-      //warm-starting  the states
-      for(int i = 0; i<14; i++){
-        for(int j = 0; j<14;j++){
-          if(i < 13){
-            x_val[i*14 + j] = res0[(i+1)*14 + j]; //warmstarting q
-            x_val[196 + i*14 + j] = res0[196 + (i+1)*14 + j]; //warmstarting q_dot
+
+      if(!terminated){
+        //Write the q, qd and qdd commands into the respective ports
+        port_writer();
+        //Implementing warm-starting. Hardcoded now, will shift to using the json thing.
+        //warm-starting  the states
+        for(int i = 0; i<14; i++){
+          for(int j = 0; j<14;j++){
+            if(i < 13){
+              x_val[i*14 + j] = res0[(i+1)*14 + j]; //warmstarting q
+              x_val[196 + i*14 + j] = res0[196 + (i+1)*14 + j]; //warmstarting q_dot
+            }
+            else{ //initializing at the last stage
+              x_val[i*14 + j] = res0[(i)*14 + j]; //warmstarting q
+              x_val[196 + i*14 + j] = res0[196 + (i)*14 + j]; //warmstarting q_dot
+            }
           }
-          else{ //initializing at the last stage
-            x_val[i*14 + j] = res0[(i)*14 + j]; //warmstarting q
-            x_val[196 + i*14 + j] = res0[196 + (i)*14 + j]; //warmstarting q_dot
+          if (i < 13){
+            x_val[392 + i] = res0[392 + i + 1]; //warmstart s
+            x_val[406 + i] = res0[406 + i + 1]; //warmstart s_dot
+          }
+          else{
+            x_val[392 + i] = res0[392 + i]; //warmstart s
+            x_val[406 + i] = res0[406 + i]; //warmstart s_dot
           }
         }
-        if (i < 13){
-        x_val[392 + i] = res0[392 + i + 1]; //warmstart s
-        x_val[406 + i] = res0[406 + i + 1]; //warmstart s_dot
-        }
-        else{
-          x_val[392 + i] = res0[392 + i]; //warmstart s
-          x_val[406 + i] = res0[406 + i]; //warmstart s_dot
-        }
-      }
 
         //warm-starting the control variables
         for(int i = 0; i<13; i++){
           for(int j = 0; j<14;j++){
             if(i < 12){
-            x_val[420 + i*14 + j] = res0[420 + (i+1)*14 + j]; //warmstarting q_ddot
+              x_val[420 + i*14 + j] = res0[420 + (i+1)*14 + j]; //warmstarting q_ddot
             }
             else{
               x_val[420 + i*14 + j] = res0[420 + (i)*14 + j];
@@ -262,7 +265,7 @@
           }
           for(int j = 0; j<2;j++){
             if(i < 12){
-            x_val[615 + i*2 + j] = res0[615 + (i+1)*2 + j]; //warmstarting slack_1
+              x_val[615 + i*2 + j] = res0[615 + (i+1)*2 + j]; //warmstarting slack_1
             }
             else{
               x_val[615 + i*2 + j] = res0[615 + (i)*2 + j]; //warmstarting slack_1
@@ -291,7 +294,7 @@
         else{
           Logger::log() << Logger::Debug << "Read joint pos from robot_sim" << Logger::endl;
           for(int i = 0; i<14; i++){
-            Logger::log() << Logger::Debug << "jpos from  " << x_val[654 + i] << " to " << m_q_actual[i] + res0[196 + i]*0.045 + 0.5*0.0025*res0[420 + i] <<  Logger::endl;
+            // Logger::log() << Logger::Debug << "jpos from  " << x_val[654 + i] << " to " << m_q_actual[i] + res0[196 + i]*0.045 + 0.5*0.0025*res0[420 + i] <<  Logger::endl;
             x_val[654 + i] = m_q_actual[i] + res0[196 + i]*0.045 + 0.5*0.0025*res0[420 + i];
           }
         }
@@ -299,15 +302,22 @@
           Logger::log() << Logger::Error << "joint velocity input port in MPC read no data " << Logger::endl;
         }
         else{
-          Logger::log() << Logger::Debug << "Read joint vel from robot_sim" << Logger::endl;
+          // Logger::log() << Logger::Debug << "Read joint vel from robot_sim" << Logger::endl;
           for(int i = 0; i<14; i++){
-            Logger::log() << Logger::Debug << "jval read at the instant = " << m_qdot_actual[i] << Logger::endl;
-            Logger::log() << Logger::Debug << "jvel from " << x_val[668 + i] << " to " << m_qdot_actual[i] + 0.05*res0[420 + i] << Logger::endl;
+            // Logger::log() << Logger::Debug << "jval read at the instant = " << m_qdot_actual[i] << Logger::endl;
+            // Logger::log() << Logger::Debug << "jvel from " << x_val[668 + i] << " to " << m_qdot_actual[i] + 0.05*res0[420 + i] << Logger::endl;
             x_val[668 + i] = m_qdot_actual[i] + 0.045*res0[420 + i];
           }
         }
 
         printf("s value is : %f", x_val[682]);
+
+        //Monitor if the termination criteria is reached
+        if(x_val[term_cond_pos] >= 6.14){
+          Logger::log() << Logger::Debug << "*** MPC termination criteria reached: writing event ***" << Logger::endl;
+          port_eout.write(mpc_file + "_mpc_done");
+          terminated = true;
+        }
 
 
         // if(flag == true){
@@ -321,6 +331,15 @@
         //   flag = true;
         // }
         casadi_c_eval_id(f_id, arg, res, iw, w, mem);
+      }
+
+      //Assuming that task-switching happens at zero velocity
+      else{
+        for(int i = 0; i < 14; i++){
+          m_qd_command[i] = 0;
+          m_qdd_command[i] = 0;
+        }
+      }
 
 
 

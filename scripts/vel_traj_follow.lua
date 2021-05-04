@@ -29,6 +29,7 @@ iface_spec = {
       { name='joint_pos_in_ref', datatype='array', type='in', desc="joint position reference from MPC" },
       { name='joint_vel_in_ref', datatype='array', type='in', desc="joint velocity reference from MPC" },
       { name='joint_acc_in_ref', datatype='array', type='in', desc="joint acceleration reference from MPC" },
+      { name='event_in', datatype='string', type='in', desc="input events"},
    },
 
    properties={
@@ -69,6 +70,7 @@ function configureHook()
   j_vel_vals_command = rtt.Variable("array")
   j_vel_vals_out = rtt.Variable("array")
   j_acc_vals = rtt.Variable("array")
+  port_ein = rtt.Variable("string")
 
   arr_zero = {}
   for i = 1,ndof do
@@ -144,6 +146,14 @@ function updateHook()
      -- print("Reading position reference")
      j_pos_vals_ref:fromtab(j_posr:totab())
    end
+
+   fs, port_ein=iface.ports.event_in:read()
+   if fs ~='NoData' then
+     print("OCP finished")
+   end
+
+
+
   end
 
   -- print("position reference:")

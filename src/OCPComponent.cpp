@@ -210,7 +210,7 @@
     void OCPComponent::updateHook()
     {
 
-      Logger::log() << Logger::Debug << "Entering updateHook" << Logger::endl;
+      Logger::log() << Logger::Debug << "Entering UpdateHook" << Logger::endl;
       //Apply the control inputs
       //read values for q_command, q_d_command and q_dd_command
       // Logger::log() << Logger::Debug << (!p_joint_space && !p_left_arm) << Logger::endl;
@@ -246,6 +246,8 @@
           m_qd_command[i] = 0;
           m_qdd_command[i] = 0;
         }
+        Logger::log() << Logger::Debug << "OCP finished: writing event" << Logger::endl;
+        port_eout.write(ocp_file + "_ocp_done");
       }
       //Write the q, qd and qdd commands into the respective ports
       port_q_command.write(m_q_command);
