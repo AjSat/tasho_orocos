@@ -2,7 +2,8 @@ cmake_minimum_required(VERSION 2.8.6)
 project(yumi_tasho)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
-add_compile_options(-std=c++11)
+#add_compile_options(-std=c++11)
+SET(CMAKE_CXX_STANDARD 11)
 #add_compile_options(-lcasadi)
 
 ## Find catkin macros and libraries
@@ -16,8 +17,12 @@ endif()
 include_directories(${orocos_kdl_INCLUDE_DIRS})
 link_directories(${orocos_kdl_LIBRARY_DIRS})
 
-find_library(CASADI_LIB casadi)
-find_path(CASADI_PATH casadi)
+find_library(CASADI_LIB casadi HINTS ${CASADI_DIR}/lib)
+link_libraries(${CASADI_LIB})
+#find_path(CASADI_LIB casadi HINTS ${CASADI_DIR}/include)
+#find_library(CASADI_LIB casadi)
+#find_path(CASADI_PATH casadi)
+message(STATUS "ikoasdfkjapsdijfioasdfkjmalsdfaoskdfnasdpofkalsdnfiasonfksa ${CASADI_DIR}")
 
 find_package(kdl_parser)
 
@@ -142,8 +147,12 @@ ${catkin_INCLUDE_DIRS}
 #)
 #CASADI_LIB = "/home/ajay/env37/lib/python3.7/site-packages/casadi/libcasadi.so"
 include_directories("/home/ajay/env37/lib/python3.7/site-packages/casadi/include")
+#link_directories("/home/ajay/env37/lib/python3.7/site-packages/casadi/lib")
 link_libraries(${MPCComponent} "/home/ajay/env37/lib/python3.7/site-packages/casadi/libcasadi.so")
 link_libraries(${OCPComponent} "/home/ajay/env37/lib/python3.7/site-packages/casadi/libcasadi.so")
+#link_libraries(${OCPComponent} "/home/ajay/env37/lib/python3.7/site-packages/casadi/libcasadi_conic_qpoases.so")
+
+
 
 include( ${OROCOS-RTT_USE_FILE_PATH}/UseOROCOS-RTT.cmake )
 

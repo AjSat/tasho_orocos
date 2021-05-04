@@ -64,16 +64,17 @@
     casadi_int n_in, n_out, sz_arg, sz_res, sz_iw, sz_w;
     // casadi_int *iw;
     // double *w;
-    double *x_val, *x_val2, *res0, *res2;
+    //double *x_val, *x_val2, *res0, *res2;
+    std::vector<double>  x_val, x_val2, res0, res2;
     // double **res;
     // const double *arg[250]; //TODO: hardcoded, hope that it is always high enough
     bool wait, flag = true;
     bool first_message, p_left_arm, p_joint_space;
 
-    std::vector<double*> arg;
-    std::vector<double*> res;
-    std::vector<casadi_int> iw;
-    std::vector<double> w;
+    // std::vector<const double*> arg;
+    // std::vector<double*> res;
+    // std::vector<casadi_int> iw;
+    // std::vector<double> w;
     int mem;
     casadi::Function ocp_function;
 

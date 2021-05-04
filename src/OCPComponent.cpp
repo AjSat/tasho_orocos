@@ -51,11 +51,11 @@
 
         ocp_function = casadi::Function::load(ocp_file);
 
-        f_ret = casadi_c_push_file(ocp_file.c_str());
-        if (f_ret) {
-          cout << "Failed to load the ocp file " + ocp_file;
-          return -1;
-        }
+        // f_ret = casadi_c_push_file(ocp_file.c_str());
+        // if (f_ret) {
+        //   cout << "Failed to load the ocp file " + ocp_file;
+        //   return -1;
+        // }
         // Identify a Function by name
         // f_id = casadi_c_id("ocp_fun");
         // n_in = casadi_c_n_in_id(f_id);
@@ -70,7 +70,7 @@
         sz_iw = ocp_function.sz_iw();
         sz_w = ocp_function.sz_w();
 
-        
+
         // casadi_c_work_id(f_id, &sz_arg, &sz_res, &sz_iw, &sz_w);
         printf("Work vector sizes:\n");
         printf("sz_arg = %lld, sz_res = %lld, sz_iw = %lld, sz_w = %lld\n\n",
@@ -82,115 +82,119 @@
         // res = new double*[sz_res];
         // iw = new casadi_int[sz_iw];
         // w = new double[sz_w];
+        // std::vector<const double*> arg(sz_arg);
+        // std::vector<double*> res(sz_res);
+        // std::vector<casadi_int> iw(sz_iw);
+        // std::vector<double> w(sz_w);
 
-        arg.resize(sz_arg);
-        res.resize(sz_res);
-        iw.resize(sz_iw);
-        w.resize(sz_w);
+        // arg.resize(sz_arg);
+        // res.resize(sz_res);
+        // iw.resize(sz_iw);
+        // w.resize(sz_w);
 
         /* Function input and output */
         //parameters that need to be set a0, q_dot0, s0, s_dot0 TODO: read all from orocos ports
-        double *q0 = new double[p_numjoints];
-        double *q_dot0 = new double[p_numjoints];
+        // double *q0 = new double[p_numjoints];
+        // double *q_dot0 = new double[p_numjoints];
 
         // Assign a fixed size and memory to the vectors associated with the ports
-        m_q_actual.assign(14, 0);
-        m_qdot_actual.assign(14, 0);
-        m_q_command.assign(14, 0);
-        m_qd_command.assign(14, 0);
-        m_qdd_command.assign(14, 0);
+        // m_q_actual.assign(14, 0);
+        // m_qdot_actual.assign(14, 0);
+        // m_q_command.assign(14, 0);
+        // m_qd_command.assign(14, 0);
+        // m_qdd_command.assign(14, 0);
 
-        if (port_q_actual.read(m_q_actual) != NoData){
-          Logger::log() << Logger::Debug << "Read joint pos from robot_sim" << Logger::endl;
-          for(int i = 0; i<14; i++){
-            Logger::log() << Logger::Debug << "Initializing the joint values = " << m_q_actual[i] << Logger::endl;
-            q0[i] = m_q_actual[i];
-          }
-        }
-        else{
-          Logger::log() << Logger::Error << "Failed to read robot joint positions" << Logger::endl;
-          return false;
-        }
-        if (port_qdot_actual.read(m_qdot_actual) != NoData){
-          // Logger::log() << Logger::Debug << "Read joint vel from robot_sim" << Logger::endl;
-          for(int i = 0; i<14; i++){
-            // Logger::log() << Logger::Debug << "Initializing the joint vel values = " << m_qdot_actual[i] << Logger::endl;
-            q_dot0[i] = m_qdot_actual[i];
-          }
-        }
-        else{
-          Logger::log() << Logger::Debug
-          << "Failed to read robot velocities. Assigning zero values." << Logger::endl;
-          double q_dot0_def[p_numjoints] = {0,0,0,0,0,0,0,
-            0,0,0,0,0,0,0};
-          q_dot0 = q_dot0_def;
-        }
-
-        x_val = new double[5000];
-        x_val2 = new double[5000];
-        res0 = new double[5000];
-        res2 = new double[5000];
-        for(int i = 0; i < 5000; i++){
-          x_val[i] = 0;
-          x_val2[i] = 0;
-          res0[i] = 0;
-          res2[i] = 0;
-        }
-        Logger::log() << Logger::Debug << "declared variables" << Logger::endl;
-
-        if(p_joint_space){
-          q0_start = 1710;
-          q_start = 0;
-          q_dot_start = 574;
-          q_ddot_start = 1148;
-          max_vel_loc = 1708;
-          max_acc_loc = 1709;
-          goal_start = 1724;
-        }
-        else{
-          q_start = 0;
-          q0_start = 856;
-          q_dot_start = 287;
-          q_ddot_start = 574;
-          max_vel_loc = 854;
-          max_acc_loc = 855;
-          goal_start = 863;
-        }
-
-        //Initilializing the parameters to the correct values of x
-        for(int i = 0; i < p_numjoints; i++){
-          x_val[q0_start + i] = q0[i];
-          for(int j = 0; j < horizon + 1; j++){
-            x_val[q_start + j*(horizon + 1) + i] = q0[i];
-          }
-        }
+        // if (port_q_actual.read(m_q_actual) != NoData){
+        //   Logger::log() << Logger::Debug << "Read joint pos from robot_sim" << Logger::endl;
+        //   for(int i = 0; i<14; i++){
+        //     Logger::log() << Logger::Debug << "Initializing the joint values = " << m_q_actual[i] << Logger::endl;
+        //     q0[i] = m_q_actual[i];
+        //   }
+        // }
+        // else{
+        //   Logger::log() << Logger::Error << "Failed to read robot joint positions" << Logger::endl;
+        //   return false;
+        // }
+        // if (port_qdot_actual.read(m_qdot_actual) != NoData){
+        //   // Logger::log() << Logger::Debug << "Read joint vel from robot_sim" << Logger::endl;
+        //   for(int i = 0; i<14; i++){
+        //     // Logger::log() << Logger::Debug << "Initializing the joint vel values = " << m_qdot_actual[i] << Logger::endl;
+        //     q_dot0[i] = m_qdot_actual[i];
+        //   }
+        // }
+        // else{
+        //   Logger::log() << Logger::Debug
+        //   << "Failed to read robot velocities. Assigning zero values." << Logger::endl;
+        //   double q_dot0_def[p_numjoints] = {0,0,0,0,0,0,0,
+        //     0,0,0,0,0,0,0};
+        //   q_dot0 = q_dot0_def;
+        // }
+        //
+        // x_val.resize(5000); // = new double[5000];
+        // x_val2.resize(5000);
+        // res0.resize(5000);// = new double[5000];
+        // res2.resize(5000); // = new double[5000];
+        // for(int i = 0; i < 5000; i++){
+        //   x_val[i] = 0;
+        //   x_val2[i] = 0;
+        //   res0[i] = 0;
+        //   res2[i] = 0;
+        // }
+        // Logger::log() << Logger::Debug << "declared variables" << Logger::endl;
+        //
+        // if(p_joint_space){
+        //   q0_start = 1710;
+        //   q_start = 0;
+        //   q_dot_start = 574;
+        //   q_ddot_start = 1148;
+        //   max_vel_loc = 1708;
+        //   max_acc_loc = 1709;
+        //   goal_start = 1724;
+        // }
+        // else{
+        //   q_start = 0;
+        //   q0_start = 856;
+        //   q_dot_start = 287;
+        //   q_ddot_start = 574;
+        //   max_vel_loc = 854;
+        //   max_acc_loc = 855;
+        //   goal_start = 863;
+        // }
+        //
+        // //Initilializing the parameters to the correct values of x
+        // for(int i = 0; i < p_numjoints; i++){
+        //   x_val[q0_start + i] = q0[i];
+        //   for(int j = 0; j < horizon + 1; j++){
+        //     x_val[q_start + j*(horizon + 1) + i] = q0[i];
+        //   }
+        // }
 
         Logger::log() << Logger::Debug << "Initialized decision" << Logger::endl;
 
         //Adding the desired final joint position
-        if(p_joint_space){
-          for(int i = 0; i < p_numjoints; i++){
-            x_val[goal_start + i] = p_qdes[i];
-          }
-        }
-        else{
-          for(int i = 0; i < 12; i++){
-            x_val[goal_start + i] = p_fk_des[i];
-          }
-        }
-
-        x_val[max_acc_loc] = p_max_acc; //setting maximum acceleration.
-        x_val[max_vel_loc] = p_max_vel; //setting maximum velocity
+        // if(p_joint_space){
+        //   for(int i = 0; i < p_numjoints; i++){
+        //     x_val[goal_start + i] = p_qdes[i];
+        //   }
+        // }
+        // else{
+        //   for(int i = 0; i < 12; i++){
+        //     x_val[goal_start + i] = p_fk_des[i];
+        //   }
+        // }
+        //
+        // x_val[max_acc_loc] = p_max_acc; //setting maximum acceleration.
+        // x_val[max_vel_loc] = p_max_vel; //setting maximum velocity
 
         // Allocate memory (thread-safe)
         Logger::log() << Logger::Debug << "Allocating memory" << Logger::endl;
-        casadi_c_incref_id(f_id);
+        // casadi_c_incref_id(f_id);
 
         /* Evaluate the function */
-        arg[0] = x_val;
-        arg[1] = x_val2;
-        res[0] = res0;
-        res[1] = res2;
+        // arg[0] = casadi::get_ptr(x_val);
+        // arg[1] = casadi::get_ptr(x_val2);
+        // res[0] = casadi::get_ptr(res0);
+        // res[1] = casadi::get_ptr(res2);
         // arg[0] = casadi::get_ptr(x_val);
         // arg[1] = casadi::get_ptr(x_val2);
         // res[0] = casadi::get_ptr(res0);
@@ -199,7 +203,7 @@
 
         // Checkout thread-local memory (not thread-safe)
         // mem = casadi_c_checkout_id(f_id);
-        mem = ocp_function.checkout();
+        // mem = ocp_function.checkout();
 
         // Evaluation is thread-safe TODO: add error handling if the OCP fails to find a solution
         Logger::log() << Logger::Debug << "Evaluating casadi OCP function" << Logger::endl;
@@ -209,14 +213,23 @@
         // }
 
         // bool solver_status = casadi_c_eval_id(f_id, arg, res, iw, w, mem);
-        int solver_status = ocp_function(arg, res, iw, w, mem);
-        // int solver_status = ocp_function(casadi::get_ptr(arg),casadi::get_ptr(res),casadi::get_ptr(iw),casadi::get_ptr(w), mem);
+        //int solver_status = ocp_function(arg, res, iw, w, mem);
+        std::vector<double> x_inp(1, 2.0);
 
-        Logger::log() << Logger::Error << "Solver status = " << solver_status << Logger::endl;
-        if(solver_status){
-          Logger::log() << Logger::Error << "OCP computation failed" << Logger::endl;
-          return false;
-        }
+
+        Logger::log() << Logger::Debug << "Created x_inp" << Logger::endl;
+        Logger::log() << Logger::Debug << ocp_function << Logger::endl;
+
+        casadi::DM solver_status = ocp_function(casadi::DMVector{x_inp})[0]; //,casadi::get_ptr(res),casadi::get_ptr(iw),casadi::get_ptr(w), mem);
+
+        Logger::log() << Logger::Error << "output = " << solver_status << Logger::endl;
+
+        ocp_function.release(mem);
+        // Logger::log() << Logger::Error << "Solver status = " << solver_status << Logger::endl;
+        // if(solver_status){
+        //   Logger::log() << Logger::Error << "OCP computation failed" << Logger::endl;
+        //   return false;
+        // }
 
         Logger::log() << Logger::Debug << "Exiting configuration hook" << Logger::endl;
         return true;

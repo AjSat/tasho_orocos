@@ -10,7 +10,7 @@ end
 require("rttlib")
 require("rttros")
 require "utils"
-rtt.setLogLevel("Error")
+rtt.setLogLevel("Debug")
 rttlib.color = true
 gs = rtt.provides()
 tc=rtt.getTC()
@@ -40,7 +40,8 @@ ocp:getProperty("ocp_rate"):set(10) -- in Hz
 ocp:getProperty("num_joints"):set(7) -- in Hz
 ocp:getProperty("horizon"):set(40) -- number of sampling steps
 dir = ros:find("yumi_tasho")
-ocp:getProperty("ocp_file"):set(dir .. "/casadi_files/leftp2p_ocp_fun.casadi")
+-- ocp:getProperty("ocp_file"):set(dir .. "/casadi_files/leftp2p_ocp_fun.casadi")
+ocp:getProperty("ocp_file"):set(dir .. "/casadi_files/hello_world.casadi")
 
 fk_des = rtt.Variable("array")
 -- fk_des:fromtab({ 1.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, -1.0, 0.4, 0.4, 0.4}) --left
