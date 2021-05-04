@@ -40,16 +40,16 @@ ocp:getProperty("ocp_rate"):set(10) -- in Hz
 ocp:getProperty("num_joints"):set(7) -- in Hz
 ocp:getProperty("horizon"):set(40) -- number of sampling steps
 dir = ros:find("yumi_tasho")
-ocp:getProperty("ocp_file"):set(dir .. "/casadi_files/rightp2p_ocp_fun.casadi")
+ocp:getProperty("ocp_file"):set(dir .. "/casadi_files/leftp2p_ocp_fun.casadi")
 
 fk_des = rtt.Variable("array")
 -- fk_des:fromtab({ 1.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, -1.0, 0.4, 0.4, 0.4}) --left
-fk_des:fromtab({ 1.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, -1.0, 0.4, -0.4, 0.4}) --left
+fk_des:fromtab({ 1.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, -1.0, 0.4, 0.4, 0.4}) --left
 ocp:getProperty("fk_des"):set(fk_des)
 ocp:getProperty("max_vel"):set(120/180.0*3.14159)
 ocp:getProperty("max_acc"):set(240/180*3.14159)
 ocp:getProperty("joint_pos"):set(false)
-ocp:getProperty("move_left_arm"):set(false)
+ocp:getProperty("move_left_arm"):set(true)
 
 depl:setActivity("ocp", 0, 99, rtt.globals.ORO_SCHED_RT)
 ocp:setPeriod(0.1)
@@ -60,6 +60,7 @@ cp.size=1  -- buffer size
 depl:loadComponent("traj_interp", "OCL::LuaComponent")
 traj_interp = depl:getPeer("traj_interp")
 traj_interp:exec_file(dir .. "/scripts/vel_traj_follow.lua")
+traj_interp:getProperty("p_gain"):set(0.1)
 depl:setActivity("traj_interp", 0, 99, rtt.globals.ORO_SCHED_RT)
 traj_interp:setPeriod(0.004)
 
@@ -83,6 +84,7 @@ depl:connectPeers("traj_interp","ocp")
 
 -- Connecting the ports between the components
 depl:connect("traj_interp.joint_vel_out_arr", "robot_sim.jointvel", cp)
+depl:connect("traj_interp.joint_pos_in_actual", "robot_sim.jointpos", cp)
 depl:connect("robot_sim.jointpos", "ocp.q_actual", cp)
 depl:connect("robot_sim.jointvel_out", "ocp.qdot_actual", cp)
 depl:connect("traj_interp.joint_pos_in_ref", "ocp.q_command", cp)
@@ -98,7 +100,7 @@ traj_interp:configure()
 
 traj_interp:start()
 ocp:start()
-sleep(4.0)
+sleep(6.0)
 -- --
 ocp:stop()
 robot_sim:stop()

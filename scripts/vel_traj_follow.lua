@@ -66,6 +66,7 @@ function configureHook()
   j_vel_vals_actual = rtt.Variable("array")
   j_pos_vals_ref = rtt.Variable("array")
   j_vel_vals_ref = rtt.Variable("array")
+  j_vel_vals_command = rtt.Variable("array")
   j_vel_vals_out = rtt.Variable("array")
   j_acc_vals = rtt.Variable("array")
 
@@ -75,6 +76,7 @@ function configureHook()
   end
   -- Initializing joint velocity and acceleration to zero by default
   j_vel_vals_ref:fromtab(arr_zero)
+  j_vel_vals_command:fromtab(arr_zero)
   iface.ports.joint_vel_out_arr:write(j_vel_vals_ref)
   j_acc_vals:fromtab(arr_zero)
   iface=rttlib.create_if(iface_spec)
@@ -115,8 +117,14 @@ end
 function updateHook()
   -- print("Entering traj_interp updateHook")
   -- Computing the position and velocity references
+  fs,j_pos=iface.ports.joint_pos_in_actual:read()
+  if fs ~='NoData' then
+    j_pos_vals_actual:fromtab(j_pos:totab())
+  end
+
   for i = 0,ndof-1 do
     j_vel_vals_ref[i] = j_vel_vals_ref[i] + j_acc_vals[i]*dt
+    j_vel_vals_command[i] = j_vel_vals_ref[i] + p_gain*(j_pos_vals_ref[i] - j_pos_vals_actual[i])
     j_pos_vals_ref[i] = j_pos_vals_ref[i] + j_vel_vals_ref[i]*dt + 0.5*j_acc_vals[i]*dt^2
   end
   -- Reading references from the MPC if available
@@ -129,6 +137,7 @@ function updateHook()
    if fs ~='NoData' then
      -- print("Reading velocity reference")
      j_vel_vals_ref:fromtab(j_velr:totab())
+     j_vel_vals_command:fromtab(j_velr:totab())
    end
    fs,j_posr=iface.ports.joint_pos_in_ref:read()
    if fs ~='NoData' then
@@ -144,7 +153,7 @@ function updateHook()
   -- print("acceleration reference")
   -- print(j_acc_vals)
 
-    iface.ports.joint_vel_out_arr:write(j_vel_vals_ref) -- TODO add feedback for joint position error
+    iface.ports.joint_vel_out_arr:write(j_vel_vals_command) -- TODO add feedback for joint position error
 
 end
 

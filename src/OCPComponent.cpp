@@ -183,11 +183,13 @@
         // Evaluation is thread-safe TODO: add error handling if the OCP fails to find a solution
         Logger::log() << Logger::Debug << "Evaluating casadi OCP function" << Logger::endl;
 
-        for(int i = 0; i < 14; i++){
-          m_qdd_command[i] = 0.0;
-        }
+        // for(int i = 0; i < 14; i++){
+        //   m_qdd_command[i] = 0.0;
+        // }
 
-        if(casadi_c_eval_id(f_id, arg, res, iw, w, mem)){
+        bool solver_status = casadi_c_eval_id(f_id, arg, res, iw, w, mem);
+        Logger::log() << Logger::Error << "Solver status = " << solver_status << Logger::endl;
+        if(solver_status){
           Logger::log() << Logger::Error << "OCP computation failed" << Logger::endl;
           return false;
         }
@@ -212,29 +214,37 @@
       //Apply the control inputs
       //read values for q_command, q_d_command and q_dd_command
       // Logger::log() << Logger::Debug << (!p_joint_space && !p_left_arm) << Logger::endl;
-      if(p_joint_space){
-        for(i = 0; i < p_numjoints; i++){
-          m_q_command[i] = res0[i +  sequence*p_numjoints];
-          m_qd_command[i] = res0[q_dot_start + i + sequence*p_numjoints];
-          m_qdd_command[i] = res0[q_ddot_start + i + sequence*p_numjoints];
-        }
-      }
-      else{
-        if (p_left_arm){
-          for(i = 0; i < 7; i++){
-            m_q_command[i] = res0[i + sequence*7];
-            m_qd_command[i] = res0[q_dot_start +  i + sequence*7];
-            m_qdd_command[i] = res0[q_ddot_start + i + sequence*7];
+      if(sequence < horizon){
+        if(p_joint_space){
+          for(i = 0; i < p_numjoints; i++){
+            m_q_command[i] = res0[i +  sequence*p_numjoints];
+            m_qd_command[i] = res0[q_dot_start + i + sequence*p_numjoints];
+            m_qdd_command[i] = res0[q_ddot_start + i + sequence*p_numjoints];
           }
         }
         else{
-          // Logger::log() << Logger::Debug << "Updating right arm velocities for sequence " << sequence << Logger::endl;
-          for(i = 0; i < 7; i++){
-            m_q_command[i + 7] = res0[i + sequence*7];
-            m_qd_command[i + 7] = res0[q_dot_start  +  i + sequence*7];
-            m_qdd_command[i+7] = res0[q_ddot_start + i + sequence*7];
+          if (p_left_arm){
+            for(i = 0; i < 7; i++){
+              m_q_command[i] = res0[i + sequence*7];
+              m_qd_command[i] = res0[q_dot_start +  i + sequence*7];
+              m_qdd_command[i] = res0[q_ddot_start + i + sequence*7];
+            }
           }
-          // Logger::log() << Logger::Debug << m_qd_command[7] << Logger::endl;
+          else{
+            // Logger::log() << Logger::Debug << "Updating right arm velocities for sequence " << sequence << Logger::endl;
+            for(i = 0; i < 7; i++){
+              m_q_command[i + 7] = res0[i + sequence*7];
+              m_qd_command[i + 7] = res0[q_dot_start  +  i + sequence*7];
+              m_qdd_command[i+7] = res0[q_ddot_start + i + sequence*7];
+            }
+            // Logger::log() << Logger::Debug << m_qd_command[7] << Logger::endl;
+          }
+        }
+      }
+      else if(sequence == horizon){
+        for(i = 0; i < 14; i++){
+          m_qd_command[i] = 0;
+          m_qdd_command[i] = 0;
         }
       }
       //Write the q, qd and qdd commands into the respective ports
