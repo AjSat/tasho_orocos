@@ -60,9 +60,9 @@ function configureHook()
 
 
    -- redirect rFSM output to rtt log
-   fsm.info=function(...) rtt.logl('Info', table.concat({...}, ' ')) end
-   fsm.warn=function(...) rtt.logl('Warning', table.concat({...}, ' ')) end
-   fsm.err=function(...) rtt.logl('Error', table.concat({...}, ' ')) end
+   -- fsm.info=function(...) rtt.logl('Info', table.concat({...}, ' ')) end
+   -- fsm.warn=function(...) rtt.logl('Warning', table.concat({...}, ' ')) end
+   -- fsm.err=function(...) rtt.logl('Error', table.concat({...}, ' ')) end
 
    -- the following creates a string input port, adds it as a event
    -- driven port to the Taskcontext. The third line generates a

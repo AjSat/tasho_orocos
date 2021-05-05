@@ -50,7 +50,7 @@
         Logger::In in(this->getName());
         Logger::log() << Logger::Debug << "Entering configuration hook" << Logger::endl;
         f_ret = casadi_c_push_file(p_ocp_file.c_str());
-        Logger::log() << Logger::Debug << "Loaded configuration file" << Logger::endl;
+        Logger::log() << Logger::Info << "Loaded configuration file" << Logger::endl;
         if (f_ret) {
           cout << "Failed to load the ocp file " + p_ocp_file;
           return -1;
@@ -85,7 +85,7 @@
         m_q_command.assign(14, 0);
         m_qd_command.assign(14, 0);
         m_qdd_command.assign(14, 0);
-        
+
         if (port_q_actual.read(m_q_actual) != NoData){
           Logger::log() << Logger::Debug << "Read joint pos from robot_sim" << Logger::endl;
           for(int i = 0; i<14; i++){
@@ -98,9 +98,9 @@
           return false;
         }
         if (port_qdot_actual.read(m_qdot_actual) != NoData){
-          // Logger::log() << Logger::Debug << "Read joint vel from robot_sim" << Logger::endl;
+          Logger::log() << Logger::Debug << "Read joint vel from robot_sim" << Logger::endl;
           for(int i = 0; i<14; i++){
-            // Logger::log() << Logger::Debug << "Initializing the joint vel values = " << m_qdot_actual[i] << Logger::endl;
+            Logger::log() << Logger::Debug << "Initializing the joint vel values = " << m_qdot_actual[i] << Logger::endl;
             q_dot0[i] = m_qdot_actual[i];
           }
         }
@@ -196,7 +196,7 @@
           return false;
         }
 
-        Logger::log() << Logger::Debug << "Exiting configuration hook" << Logger::endl;
+        // Logger::log() << Logger::Debug << "Exiting configuration hook" << Logger::endl;
         return true;
     }
 
@@ -249,7 +249,8 @@
           m_qdd_command[i] = 0;
         }
         Logger::log() << Logger::Debug << "OCP finished: writing event" << Logger::endl;
-        port_eout.write(p_ocp_file + "_ocp_done");
+        Logger::log() << Logger::Debug << p_ocp_fun + "_done" << Logger::endl;
+        port_eout.write(p_ocp_fun + "_done");
       }
       //Write the q, qd and qdd commands into the respective ports
       port_q_command.write(m_q_command);

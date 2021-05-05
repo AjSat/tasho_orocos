@@ -10,7 +10,7 @@ end
 require("rttlib")
 require("rttros")
 require "utils"
-rtt.setLogLevel("Debug")
+rtt.setLogLevel("Error")
 rttlib.color = true
 gs = rtt.provides()
 tc=rtt.getTC()
@@ -38,15 +38,14 @@ ros:import("etasl_iohandler_jointstate")
 ocp:getProperty("ocp_rate"):set(10) -- in Hz
 ocp:getProperty("horizon"):set(40) -- in Hz
 dir = ros:find("yumi_tasho")
-ocp:getProperty("ocp_file"):set(dir .. "/casadi_files/homing_ocp.casadi")
-
+ocp:getProperty("ocp_file"):set(dir .. "/casadi_files/homing_ocp_fun.casadi")
 home_pos = rtt.Variable("array")
 home_pos:fromtab({ -0.19690, -2.33, 1.95, 0.6580, 0.2390, 0.3770, -0.4250, 0, -2.26, -2.35, 0.52, 0.025, 0.749, 0,})
 ocp:getProperty("qdes"):set(home_pos)
 ocp:getProperty("max_vel"):set(50/180.0*3.14159)
 ocp:getProperty("max_acc"):set(120/180*3.14159)
 ocp:getProperty("joint_pos"):set(true)
-ocp:getProperty("ocp_fun"):set("ocp_fun")
+ocp:getProperty("ocp_fun"):set("homing_ocp_fun")
 
 
 depl:setActivity("ocp", 0, 99, rtt.globals.ORO_SCHED_RT)
