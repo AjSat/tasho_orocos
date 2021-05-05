@@ -58,6 +58,8 @@ function updateHook()
         end
       jvel_vals = vel
     end
+    -- print("sim_robot writing joint values ")
+    -- print(jvals)
     iface.ports.jointpos:write(jvals)
     iface.ports.jointvel_out:write(jvel_vals)
 

@@ -11,6 +11,7 @@
       this->addProperty("num_joints", p_numjoints).doc("Number of joints");
       this->addProperty("horizon", p_horizon).doc("Horizon size of the MPC");
       this->addProperty("ocp_file", p_ocp_file).doc("The casadi file that will compute the OCP.");
+      this->addProperty("ocp_fun", p_ocp_fun).doc("The function that should be loaded from .casadi file");
       this->addProperty("qdes", p_qdes).doc("desired final position of the robot.");
       this->addProperty("fk_des", p_fk_des).doc("Desired final pose of the robot arm. (12,1)");
       this->addProperty("move_left_arm", p_left_arm).doc("Set to true to move left arm,false for right arm.");
@@ -49,12 +50,13 @@
         Logger::In in(this->getName());
         Logger::log() << Logger::Debug << "Entering configuration hook" << Logger::endl;
         f_ret = casadi_c_push_file(p_ocp_file.c_str());
+        Logger::log() << Logger::Debug << "Loaded configuration file" << Logger::endl;
         if (f_ret) {
           cout << "Failed to load the ocp file " + p_ocp_file;
           return -1;
         }
         // Identify a Function by name
-        f_id = casadi_c_id("ocp_fun");
+        f_id = casadi_c_id(p_ocp_fun.c_str());
         n_in = casadi_c_n_in_id(f_id);
         n_out = casadi_c_n_out_id(f_id);
 
@@ -83,7 +85,7 @@
         m_q_command.assign(14, 0);
         m_qd_command.assign(14, 0);
         m_qdd_command.assign(14, 0);
-
+        
         if (port_q_actual.read(m_q_actual) != NoData){
           Logger::log() << Logger::Debug << "Read joint pos from robot_sim" << Logger::endl;
           for(int i = 0; i<14; i++){

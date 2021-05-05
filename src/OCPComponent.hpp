@@ -48,6 +48,7 @@
     unsigned int p_numjoints;
     double p_max_vel, p_max_acc;
     string p_ocp_file;
+    string p_ocp_fun;
     const double degrees_to_radians;
     // TODO: egm_rate is currently not used!
     double p_ocp_rate;
