@@ -47,12 +47,12 @@
     /// Properties
     unsigned int p_numjoints;
     double p_max_vel, p_max_acc;
-    string p_ocp_file;
-    string p_ocp_fun;
+    string ocp_file, ocp_fun;
     const double degrees_to_radians;
+    double Kpos;
     // TODO: egm_rate is currently not used!
-    double p_ocp_rate;
-    int p_horizon, q0_start, qdot0_start, q_start, q_dot_start, q_ddot_start, goal_start, max_vel_loc, max_acc_loc;
+    double ocp_rate;
+    int horizon, q0_start, qdot0_start, q_start, q_dot_start, q_ddot_start, goal_start, max_vel_loc, max_acc_loc;
 
     //const unsigned int egm_rate;  // [Hz] (EGM communication rate, specified by the EGMActJoint RAPID instruction)
     int sequence = 0; // [-] (sequence number of a received EGM message)
@@ -62,7 +62,7 @@
     casadi_int n_in, n_out, sz_arg, sz_res, sz_iw, sz_w, *iw;
     double  *w, *x_val, *x_val2, *res0, *res2;
     double **res;
-    const double *arg[250]; //TODO: hardcoded, hope that it is always high enough
+    const double **arg;
     bool wait, flag = true;
     bool first_message, p_left_arm, p_joint_space;
 
