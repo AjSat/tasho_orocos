@@ -42,14 +42,14 @@ mpc = depl:getPeer("mpc")
 --Configuration
 --6511 is ROB_L 6512 is ROB_R
 mpc:getProperty("mpc_rate"):set(20) -- in Hz
-mpc:getProperty("horizon"):set(13) -- in Hz
+mpc:getProperty("p_horizon"):set(13) -- in Hz
 dir = rtt.provides("ros"):find("yumi_tasho")
 mpc:getProperty("ocp_file"):set(dir .. "/casadi_files/ocp_fun.casadi")
 mpc:getProperty("mpc_file"):set(dir .. "/casadi_files/mpc_fun.casadi")
 mpc:getProperty("predict_file"):set(dir .. "/casadi_files/jac_fun_rob.casadi")
 mpc:getProperty("shift_file"):set(dir .. "/casadi_files/jac_fun_rob.casadi")
 
-depl:setActivity("mpc", 0, 99, rtt.globals.ORO_SCHED_RT)
+depl:setActivity("mpc", 0, 5, rtt.globals.ORO_SCHED_RT)
 mpc:setPeriod(0.05)
 cp = rtt.Variable("ConnPolicy")
 -- cp.type=1   -- type buffered
@@ -59,13 +59,13 @@ depl:loadComponent("traj_interp", "OCL::LuaComponent")
 traj_interp = depl:getPeer("traj_interp")
 traj_interp:exec_file(dir .. "/scripts/vel_traj_follow.lua")
 -- depl:setMasterSlaveActivity("fbs", "traj_gen")
-depl:setActivity("traj_interp", 0, 99, rtt.globals.ORO_SCHED_RT)
+depl:setActivity("traj_interp", 0, 1, rtt.globals.ORO_SCHED_RT)
 traj_interp:setPeriod(0.004)
 
 depl:loadComponent("robot_sim", "OCL::LuaComponent")
 robot_sim = depl:getPeer("robot_sim")
 robot_sim:exec_file(dir .. "/scripts/simple_robot_sim.lua")
-depl:setActivity("robot_sim", 0, 99, rtt.globals.ORO_SCHED_RT)
+depl:setActivity("robot_sim", 0, 0, rtt.globals.ORO_SCHED_RT)
 robot_sim:setPeriod(0.004)
 j_init = rtt.Variable("array")
 j_init:fromtab({-1.36542319, -0.74822507, 2.05658987, 0.52732208, 2.4950726,

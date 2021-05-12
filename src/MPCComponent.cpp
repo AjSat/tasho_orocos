@@ -227,9 +227,9 @@
       term_cond_pos = 682;
       //Apply the control inputs
 
+      port_writer();
       if(!terminated){
         //Write the q, qd and qdd commands into the respective ports
-        port_writer();
         //Implementing warm-starting. Hardcoded now, will shift to using the json thing.
         //warm-starting  the states
         for(int i = 0; i<14; i++){
@@ -313,10 +313,14 @@
         printf("s value is : %f", x_val[682]);
 
         //Monitor if the termination criteria is reached
-        if(x_val[term_cond_pos] >= 6.14){
+        if(x_val[term_cond_pos] >= 12.14){
           Logger::log() << Logger::Debug << "*** MPC termination criteria reached: writing event ***" << Logger::endl;
           port_eout.write(p_mpc_file + "_mpc_done");
           terminated = true;
+          for(int i = 0; i < 14; i++){ //Assume that tasks switch as zero velocity
+            m_qd_command[i] = 0;
+            m_qdd_command[i] = 0;
+          }
         }
 
 
@@ -332,15 +336,6 @@
         // }
         casadi_c_eval_id(f_id, arg, res, iw, w, mem);
       }
-
-      //Assuming that task-switching happens at zero velocity
-      else{
-        for(int i = 0; i < 14; i++){
-          m_qd_command[i] = 0;
-          m_qdd_command[i] = 0;
-        }
-      }
-
 
 
         this->trigger(); //TODO: shouldn't this trigger be removed?

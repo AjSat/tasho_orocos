@@ -87,7 +87,7 @@
         m_qdd_command.assign(14, 0);
 
         if (port_q_actual.read(m_q_actual) != NoData){
-          Logger::log() << Logger::Debug << "Read joint pos from robot_sim" << Logger::endl;
+          Logger::log() << Logger::Debug << "Reading joint pos from robot_sim" << Logger::endl;
           for(int i = 0; i<14; i++){
             Logger::log() << Logger::Debug << "Initializing the joint values = " << m_q_actual[i] << Logger::endl;
             q0[i] = m_q_actual[i];
