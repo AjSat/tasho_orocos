@@ -44,7 +44,7 @@ ocp:getProperty("ocp_file"):set(dir .. "/casadi_files/leftp2p_ocp_fun.casadi")
 
 fk_des = rtt.Variable("array")
 -- fk_des:fromtab({ 1.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, -1.0, 0.4, 0.4, 0.4}) --left
-fk_des:fromtab({ 1.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, -1.0, 0.4, -0.4, 0.4}) --left
+fk_des:fromtab({ 1.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, -1.0, 0.4, 0.4, 0.4}) --left
 ocp:getProperty("fk_des"):set(fk_des)
 ocp:getProperty("max_vel"):set(120/180.0*3.14159)
 ocp:getProperty("max_acc"):set(240/180*3.14159)

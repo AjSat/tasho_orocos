@@ -140,11 +140,11 @@ ${catkin_INCLUDE_DIRS}
 #${CASADI_PATH}
 #)
 #CASADI_LIB = "/home/ajay/env37/lib/python3.7/site-packages/casadi/libcasadi.so"
-# include_directories("/home/ajay/env37/lib/python3.7/site-packages/casadi/include")
-# link_libraries(${MPCComponent} "/home/ajay/env37/lib/python3.7/site-packages/casadi/libcasadi.so")
-# link_libraries(${OCPComponent} "/home/ajay/env37/lib/python3.7/site-packages/casadi/libcasadi.so")
-link_libraries(${MPCComponent} casadi)
-link_libraries(${OCPComponent} casadi)
+include_directories("/home/ajay/env37/lib/python3.7/site-packages/casadi/include")
+link_libraries(${MPCComponent} "/home/ajay/env37/lib/python3.7/site-packages/casadi/libcasadi.so")
+link_libraries(${OCPComponent} "/home/ajay/env37/lib/python3.7/site-packages/casadi/libcasadi.so")
+# link_libraries(${MPCComponent} casadi)
+# link_libraries(${OCPComponent} casadi)
 
 include( ${OROCOS-RTT_USE_FILE_PATH}/UseOROCOS-RTT.cmake )
 

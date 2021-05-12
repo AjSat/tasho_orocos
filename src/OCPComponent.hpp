@@ -62,7 +62,7 @@
     casadi_int n_in, n_out, sz_arg, sz_res, sz_iw, sz_w, *iw;
     double  *w, *x_val, *x_val2, *res0, *res2;
     double **res;
-    const double *arg[250]; //TODO: hardcoded, hope that it is always high enough
+    const double **arg; //TODO: hardcoded, hope that it is always high enough
     bool wait, flag = true;
     bool first_message, p_left_arm, p_joint_space;
 

@@ -62,6 +62,19 @@
 
         sz_arg=n_in; sz_res=n_out; sz_iw=0; sz_w=0;
 
+        const casadi_int *sp_i;
+        sp_i = casadi_c_sparsity_in_id(f_id, 0);
+        casadi_int nrow = *sp_i++; /* Number of rows */
+        casadi_int ncol = *sp_i++; /* Number of columns */
+        casadi_int nnz = sp_i[ncol]; /* Number of nonzeros */
+
+        sp_i = casadi_c_sparsity_out_id(f_id, 0);
+        nrow = *sp_i++; /* Number of rows */
+        ncol = *sp_i++; /* Number of columns */
+        casadi_int nnz_out = sp_i[ncol]; /* Number of nonzeros */
+
+        sz_arg=n_in; sz_res=n_out; sz_iw=0; sz_w=0;
+
         casadi_c_work_id(f_id, &sz_arg, &sz_res, &sz_iw, &sz_w);
         printf("Work vector sizes:\n");
         printf("sz_arg = %lld, sz_res = %lld, sz_iw = %lld, sz_w = %lld\n\n",
@@ -71,8 +84,9 @@
             /* Allocate input/output buffers and work vectors*/
 
         res = new double*[sz_res];
+        arg = new const double*[sz_arg];
         iw = new casadi_int[sz_iw];
-        w = new double[70000];
+        w = new double[sz_w];
 
         /* Function input and output */
         //parameters that need to be set a0, q_dot0, s0, s_dot0 TODO: read all from orocos ports
@@ -112,15 +126,11 @@
           q_dot0 = q_dot0_def;
         }
 
-        x_val = new double[5000];
-        x_val2 = new double[5000];
-        res0 = new double[5000];
-        res2 = new double[5000];
-        for(int i = 0; i < 5000; i++){
+        x_val = new double[nnz];
+        res0 = new double[nnz_out];
+        for(int i = 0; i < nnz; i++){
           x_val[i] = 0;
-          x_val2[i] = 0;
           res0[i] = 0;
-          res2[i] = 0;
         }
         Logger::log() << Logger::Debug << "declared variables" << Logger::endl;
 
@@ -185,10 +195,6 @@
         // Evaluation is thread-safe TODO: add error handling if the OCP fails to find a solution
         Logger::log() << Logger::Debug << "Evaluating casadi OCP function" << Logger::endl;
 
-        // for(int i = 0; i < 14; i++){
-        //   m_qdd_command[i] = 0.0;
-        // }
-
         bool solver_status = casadi_c_eval_id(f_id, arg, res, iw, w, mem);
         Logger::log() << Logger::Error << "Solver status = " << solver_status << Logger::endl;
         if(solver_status){
@@ -196,7 +202,7 @@
           return false;
         }
 
-        // Logger::log() << Logger::Debug << "Exiting configuration hook" << Logger::endl;
+        Logger::log() << Logger::Debug << "Exiting configuration hook" << Logger::endl;
         return true;
     }
 

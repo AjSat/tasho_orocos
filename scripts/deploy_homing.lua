@@ -10,7 +10,7 @@ end
 require("rttlib")
 require("rttros")
 require "utils"
-rtt.setLogLevel("Error")
+rtt.setLogLevel("Debug")
 rttlib.color = true
 gs = rtt.provides()
 tc=rtt.getTC()
