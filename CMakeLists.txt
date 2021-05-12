@@ -16,8 +16,7 @@ endif()
 include_directories(${orocos_kdl_INCLUDE_DIRS})
 link_directories(${orocos_kdl_LIBRARY_DIRS})
 
-find_library(CASADI_LIB casadi)
-find_path(CASADI_PATH casadi)
+find_package(casadi)
 
 find_package(kdl_parser)
 
@@ -141,9 +140,11 @@ ${catkin_INCLUDE_DIRS}
 #${CASADI_PATH}
 #)
 #CASADI_LIB = "/home/ajay/env37/lib/python3.7/site-packages/casadi/libcasadi.so"
-include_directories("/home/ajay/env37/lib/python3.7/site-packages/casadi/include")
-link_libraries(${MPCComponent} "/home/ajay/env37/lib/python3.7/site-packages/casadi/libcasadi.so")
-link_libraries(${OCPComponent} "/home/ajay/env37/lib/python3.7/site-packages/casadi/libcasadi.so")
+# include_directories("/home/ajay/env37/lib/python3.7/site-packages/casadi/include")
+# link_libraries(${MPCComponent} "/home/ajay/env37/lib/python3.7/site-packages/casadi/libcasadi.so")
+# link_libraries(${OCPComponent} "/home/ajay/env37/lib/python3.7/site-packages/casadi/libcasadi.so")
+link_libraries(${MPCComponent} casadi)
+link_libraries(${OCPComponent} casadi)
 
 include( ${OROCOS-RTT_USE_FILE_PATH}/UseOROCOS-RTT.cmake )
 
