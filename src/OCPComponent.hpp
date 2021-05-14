@@ -23,6 +23,10 @@
 #include <motion_control_msgs/JointVelocities.h>
 #include <geometry_msgs/Pose.h>
 
+// Including the json cpp parser
+#include "json.hpp"
+using json = nlohmann::json;
+
 #include <vector>
 
   using namespace RTT;
@@ -66,6 +70,7 @@
     bool wait, flag = true;
     bool first_message, p_left_arm, p_joint_space;
 
+    json j; //json object to parse the OCP component properties
 
 
     // Internal, mem alloc

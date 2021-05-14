@@ -6,6 +6,11 @@
 
     OCPComponent::OCPComponent(const string &name) : TaskContext(name, PreOperational), p_numjoints(14), p_horizon(15), degrees_to_radians(M_PI / 180.0),  p_ocp_rate(10), time(0.0), wait(true), p_max_vel(20.0/180*3.14159), p_joint_space(true), p_max_acc(120/180*3.14159), p_left_arm(true)
     {
+      FILE * pFile;
+      pFile = fopen ("/home/ajay/Desktop/tasho_mpc/src/yumi_tasho/casadi_files/homing_ocp_fun2_property.json" , "r");
+
+      if (pFile == NULL) perror ("Error opening file");
+      j = json::parse(pFile);
       //Adding properties
       this->addProperty("ocp_rate", p_ocp_rate).doc("Sampling rate of the OCP");
       this->addProperty("num_joints", p_numjoints).doc("Number of joints");
@@ -49,14 +54,14 @@
 
         Logger::In in(this->getName());
         Logger::log() << Logger::Debug << "Entering configuration hook" << Logger::endl;
-        f_ret = casadi_c_push_file(p_ocp_file.c_str());
+        f_ret = casadi_c_push_file(j["casadi_fun"].get<std::string>().c_str());
         Logger::log() << Logger::Info << "Loaded configuration file" << Logger::endl;
         if (f_ret) {
           cout << "Failed to load the ocp file " + p_ocp_file;
           return -1;
         }
         // Identify a Function by name
-        f_id = casadi_c_id(p_ocp_fun.c_str());
+        f_id = casadi_c_id(j["fun_name"].get<std::string>().c_str());
         n_in = casadi_c_n_in_id(f_id);
         n_out = casadi_c_n_out_id(f_id);
 
@@ -210,7 +215,7 @@
     {
 
             Logger::log() << Logger::Debug << "Entering startHook" << Logger::endl;
-            Logger::In in(this->getName());
+            // Logger::In in(this->getName());
 
         return true;
     }
