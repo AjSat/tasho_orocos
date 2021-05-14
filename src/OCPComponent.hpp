@@ -53,6 +53,7 @@ using json = nlohmann::json;
     double p_max_vel, p_max_acc;
     string p_ocp_file;
     string p_ocp_fun;
+    string p_js_prop_file;
     const double degrees_to_radians;
     // TODO: egm_rate is currently not used!
     double p_ocp_rate;
@@ -70,7 +71,7 @@ using json = nlohmann::json;
     bool wait, flag = true;
     bool first_message, p_left_arm, p_joint_space;
 
-    json j; //json object to parse the OCP component properties
+    json js_prop; //json object to parse the OCP component properties
 
 
     // Internal, mem alloc

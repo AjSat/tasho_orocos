@@ -6,17 +6,10 @@
 
     OCPComponent::OCPComponent(const string &name) : TaskContext(name, PreOperational), p_numjoints(14), p_horizon(15), degrees_to_radians(M_PI / 180.0),  p_ocp_rate(10), time(0.0), wait(true), p_max_vel(20.0/180*3.14159), p_joint_space(true), p_max_acc(120/180*3.14159), p_left_arm(true)
     {
-      FILE * pFile;
-      pFile = fopen ("/home/ajay/Desktop/tasho_mpc/src/yumi_tasho/casadi_files/homing_ocp_fun2_property.json" , "r");
-
-      if (pFile == NULL) perror ("Error opening file");
-      j = json::parse(pFile);
       //Adding properties
       this->addProperty("ocp_rate", p_ocp_rate).doc("Sampling rate of the OCP");
       this->addProperty("num_joints", p_numjoints).doc("Number of joints");
-      this->addProperty("horizon", p_horizon).doc("Horizon size of the MPC");
-      this->addProperty("ocp_file", p_ocp_file).doc("The casadi file that will compute the OCP.");
-      this->addProperty("ocp_fun", p_ocp_fun).doc("The function that should be loaded from .casadi file");
+      this->addProperty("js_prop_file", p_js_prop_file).doc("The location to the json file containing all the info pertaining to the OCP.");
       this->addProperty("qdes", p_qdes).doc("desired final position of the robot.");
       this->addProperty("fk_des", p_fk_des).doc("Desired final pose of the robot arm. (12,1)");
       this->addProperty("move_left_arm", p_left_arm).doc("Set to true to move left arm,false for right arm.");
@@ -54,14 +47,23 @@
 
         Logger::In in(this->getName());
         Logger::log() << Logger::Debug << "Entering configuration hook" << Logger::endl;
-        f_ret = casadi_c_push_file(j["casadi_fun"].get<std::string>().c_str());
+
+        FILE * pFile;
+        pFile = fopen (p_js_prop_file.c_str(), "r");
+        if (pFile == NULL) perror ("Error opening file");
+        js_prop = json::parse(pFile);
+        p_horizon = js_prop["horizon"].get<int>();
+        p_ocp_file = js_prop["casadi_fun"].get<std::string>();
+        p_ocp_fun = js_prop["fun_name"].get<std::string>();
+
+        f_ret = casadi_c_push_file(p_ocp_file.c_str());
         Logger::log() << Logger::Info << "Loaded configuration file" << Logger::endl;
         if (f_ret) {
           cout << "Failed to load the ocp file " + p_ocp_file;
           return -1;
         }
         // Identify a Function by name
-        f_id = casadi_c_id(j["fun_name"].get<std::string>().c_str());
+        f_id = casadi_c_id(p_ocp_fun.c_str());
         n_in = casadi_c_n_in_id(f_id);
         n_out = casadi_c_n_out_id(f_id);
 
@@ -139,23 +141,17 @@
         }
         Logger::log() << Logger::Debug << "declared variables" << Logger::endl;
 
+        q0_start = js_prop["q0"]["start"].get<int>();
+        q_start = js_prop["q"]["start"].get<int>();
+        q_dot_start = js_prop["q_dot"]["start"].get<int>();
+        q_ddot_start = js_prop["q_ddot"]["start"].get<int>();
+        max_vel_loc = js_prop["max_vel"]["start"].get<int>();
+        max_acc_loc = js_prop["max_acc"]["start"].get<int>();
         if(p_joint_space){
-          q0_start = 1710;
-          q_start = 0;
-          q_dot_start = 574;
-          q_ddot_start = 1148;
-          max_vel_loc = 1708;
-          max_acc_loc = 1709;
-          goal_start = 1724;
+          goal_start = js_prop["qdes"]["start"].get<int>();
         }
         else{
-          q_start = 0;
-          q0_start = 856;
-          q_dot_start = 287;
-          q_ddot_start = 574;
-          max_vel_loc = 854;
-          max_acc_loc = 855;
-          goal_start = 863;
+          goal_start = js_prop["fk_des"]["start"].get<int>();
         }
 
         //Initilializing the parameters to the correct values of x
@@ -237,7 +233,7 @@
         }
         else{
           if (p_left_arm){
-            for(i = 0; i < 7; i++){
+            for(i = 0; i < p_numjoints; i++){
               m_q_command[i] = res0[i + sequence*7];
               m_qd_command[i] = res0[q_dot_start +  i + sequence*7];
               m_qdd_command[i] = res0[q_ddot_start + i + sequence*7];
@@ -245,7 +241,7 @@
           }
           else{
             // Logger::log() << Logger::Debug << "Updating right arm velocities for sequence " << sequence << Logger::endl;
-            for(i = 0; i < 7; i++){
+            for(i = 0; i < p_numjoints; i++){
               m_q_command[i + 7] = res0[i + sequence*7];
               m_qd_command[i + 7] = res0[q_dot_start  +  i + sequence*7];
               m_qdd_command[i+7] = res0[q_ddot_start + i + sequence*7];
