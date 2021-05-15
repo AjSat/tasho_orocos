@@ -38,19 +38,16 @@ ros:import("etasl_iohandler_jointstate")
 --6511 is ROB_L 6512 is ROB_R
 ocp:getProperty("ocp_rate"):set(10) -- in Hz
 ocp:getProperty("num_joints"):set(7) -- in Hz
-ocp:getProperty("horizon"):set(40) -- number of sampling steps
 dir = ros:find("yumi_tasho")
-ocp:getProperty("ocp_file"):set(dir .. "/casadi_files/leftp2p_ocp_fun.casadi")
+ocp:getProperty("js_prop_file"):set(dir .. "/casadi_files/leftp2p_ocp_fun2_property.json")
 
 fk_des = rtt.Variable("array")
 -- fk_des:fromtab({ 1.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, -1.0, 0.4, 0.4, 0.4}) --left
 fk_des:fromtab({ 1.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, -1.0, 0.4, 0.4, 0.4}) --left
-ocp:getProperty("fk_des"):set(fk_des)
+ocp:getProperty("goal_des"):set(fk_des)
 ocp:getProperty("max_vel"):set(120/180.0*3.14159)
 ocp:getProperty("max_acc"):set(240/180*3.14159)
 ocp:getProperty("joint_pos"):set(false)
-ocp:getProperty("move_left_arm"):set(true)
-ocp:getProperty("ocp_fun"):set("leftp2p_ocp_fun")
 
 depl:setActivity("ocp", 0, 99, rtt.globals.ORO_SCHED_RT)
 ocp:setPeriod(0.1)
@@ -71,9 +68,11 @@ robot_sim:exec_file(dir .. "/scripts/simple_robot_sim.lua")
 depl:setActivity("robot_sim", 0, 99, rtt.globals.ORO_SCHED_RT)
 robot_sim:setPeriod(0.004)
 j_init = rtt.Variable("array")
+-- j_init:fromtab({-1.36542319, -0.74822507, 2.05658987, 0.52732208, 2.4950726,
+--  -0.93756902, -1.71694542, 1.32087, -0.77865726, -2.04601662, 0.65292945,
+--  -2.25832585, -0.81930464, 1.00047389})
 j_init:fromtab({-1.36542319, -0.74822507, 2.05658987, 0.52732208, 2.4950726,
- -0.93756902, -1.71694542, 1.32087, -0.77865726, -2.04601662, 0.65292945,
- -2.25832585, -0.81930464, 1.00047389})
+ -0.93756902, -1.71694542})
 robot_sim:getProperty("initial_position"):set(j_init)
 
 -- Connecting the peers
@@ -92,7 +91,7 @@ depl:connect("traj_interp.joint_pos_in_ref", "ocp.q_command", cp)
 depl:connect("traj_interp.event_in", "ocp.event_out", cp)
 depl:connect("traj_interp.joint_vel_in_ref", "ocp.qdot_command", cp)
 depl:connect("traj_interp.joint_acc_in_ref", "ocp.qddot_command", cp)
-depl:stream("robot_sim.jointpos", ros:topic("/joint_states_from_orocos"))
+depl:stream("robot_sim.jointpos", ros:topic("/joint_states_left_from_orocos"))
 -- depl:stream("ocp.q_command", ros:topic("/joint_states_from_orocos"))
 robot_sim:configure()
 robot_sim:start()

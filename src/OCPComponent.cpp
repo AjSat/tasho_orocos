@@ -10,9 +10,7 @@
       this->addProperty("ocp_rate", p_ocp_rate).doc("Sampling rate of the OCP");
       this->addProperty("num_joints", p_numjoints).doc("Number of joints");
       this->addProperty("js_prop_file", p_js_prop_file).doc("The location to the json file containing all the info pertaining to the OCP.");
-      this->addProperty("qdes", p_qdes).doc("desired final position of the robot.");
-      this->addProperty("fk_des", p_fk_des).doc("Desired final pose of the robot arm. (12,1)");
-      this->addProperty("move_left_arm", p_left_arm).doc("Set to true to move left arm,false for right arm.");
+      this->addProperty("goal_des", p_goal_des).doc("Desired final pose of the robot arm.");
       this->addProperty("joint_pos", p_joint_space).doc("Set to true if goal is in jointspace. False if Cartesian.");
       this->addProperty("max_vel", p_max_vel).doc("Maximum limits on joint velocities (rad/s)");
       this->addProperty("max_acc", p_max_acc).doc("Maximum limit on acceleration (rad/s^2)");
@@ -101,15 +99,15 @@
         double *q_dot0 = new double[p_numjoints];
 
         // Assign a fixed size and memory to the vectors associated with the ports
-        m_q_actual.assign(14, 0);
-        m_qdot_actual.assign(14, 0);
-        m_q_command.assign(14, 0);
-        m_qd_command.assign(14, 0);
-        m_qdd_command.assign(14, 0);
+        m_q_actual.assign(p_numjoints, 0);
+        m_qdot_actual.assign(p_numjoints, 0);
+        m_q_command.assign(p_numjoints, 0);
+        m_qd_command.assign(p_numjoints, 0);
+        m_qdd_command.assign(p_numjoints, 0);
 
         if (port_q_actual.read(m_q_actual) != NoData){
           Logger::log() << Logger::Debug << "Reading joint pos from robot_sim" << Logger::endl;
-          for(int i = 0; i<14; i++){
+          for(int i = 0; i<p_numjoints; i++){
             Logger::log() << Logger::Debug << "Initializing the joint values = " << m_q_actual[i] << Logger::endl;
             q0[i] = m_q_actual[i];
           }
@@ -120,7 +118,7 @@
         }
         if (port_qdot_actual.read(m_qdot_actual) != NoData){
           Logger::log() << Logger::Debug << "Read joint vel from robot_sim" << Logger::endl;
-          for(int i = 0; i<14; i++){
+          for(int i = 0; i<p_numjoints; i++){
             Logger::log() << Logger::Debug << "Initializing the joint vel values = " << m_qdot_actual[i] << Logger::endl;
             q_dot0[i] = m_qdot_actual[i];
           }
@@ -128,8 +126,7 @@
         else{
           Logger::log() << Logger::Debug
           << "Failed to read robot velocities. Assigning zero values." << Logger::endl;
-          double q_dot0_def[p_numjoints] = {0,0,0,0,0,0,0,
-            0,0,0,0,0,0,0};
+          double q_dot0_def[p_numjoints];
           q_dot0 = q_dot0_def;
         }
 
@@ -165,16 +162,9 @@
         Logger::log() << Logger::Debug << "Initialized decision" << Logger::endl;
 
         //Adding the desired final joint position
-        if(p_joint_space){
-          for(int i = 0; i < p_numjoints; i++){
-            x_val[goal_start + i] = p_qdes[i];
+        for(int i = 0; i < p_goal_des.size(); i++){
+            x_val[goal_start + i] = p_goal_des[i];
           }
-        }
-        else{
-          for(int i = 0; i < 12; i++){
-            x_val[goal_start + i] = p_fk_des[i];
-          }
-        }
 
         x_val[max_acc_loc] = p_max_acc; //setting maximum acceleration.
         x_val[max_vel_loc] = p_max_vel; //setting maximum velocity
@@ -222,36 +212,15 @@
       Logger::log() << Logger::Debug << "Entering UpdateHook" << Logger::endl;
       //Apply the control inputs
       //read values for q_command, q_d_command and q_dd_command
-      // Logger::log() << Logger::Debug << (!p_joint_space && !p_left_arm) << Logger::endl;
       if(sequence < p_horizon){
-        if(p_joint_space){
-          for(i = 0; i < p_numjoints; i++){
-            m_q_command[i] = res0[i +  sequence*p_numjoints];
-            m_qd_command[i] = res0[q_dot_start + i + sequence*p_numjoints];
-            m_qdd_command[i] = res0[q_ddot_start + i + sequence*p_numjoints];
-          }
-        }
-        else{
-          if (p_left_arm){
-            for(i = 0; i < p_numjoints; i++){
-              m_q_command[i] = res0[i + sequence*7];
-              m_qd_command[i] = res0[q_dot_start +  i + sequence*7];
-              m_qdd_command[i] = res0[q_ddot_start + i + sequence*7];
-            }
-          }
-          else{
-            // Logger::log() << Logger::Debug << "Updating right arm velocities for sequence " << sequence << Logger::endl;
-            for(i = 0; i < p_numjoints; i++){
-              m_q_command[i + 7] = res0[i + sequence*7];
-              m_qd_command[i + 7] = res0[q_dot_start  +  i + sequence*7];
-              m_qdd_command[i+7] = res0[q_ddot_start + i + sequence*7];
-            }
-            // Logger::log() << Logger::Debug << m_qd_command[7] << Logger::endl;
-          }
+        for(i = 0; i < p_numjoints; i++){
+          m_q_command[i] = res0[i +  sequence*p_numjoints];
+          m_qd_command[i] = res0[q_dot_start + i + sequence*p_numjoints];
+          m_qdd_command[i] = res0[q_ddot_start + i + sequence*p_numjoints];
         }
       }
       else if(sequence == p_horizon){
-        for(i = 0; i < 14; i++){
+        for(i = 0; i < p_numjoints; i++){
           m_qd_command[i] = 0;
           m_qdd_command[i] = 0;
         }

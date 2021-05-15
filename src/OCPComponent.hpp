@@ -76,8 +76,7 @@ using json = nlohmann::json;
 
     // Internal, mem alloc
     sensor_msgs::JointState m_joint_states;
-    vector<double> p_qdes;
-    vector<double> p_fk_des;
+    vector<double> p_goal_des;
     vector<double> m_q_actual;
     vector<double> m_t_actual;
     vector<double> m_qdot_actual;
