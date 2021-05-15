@@ -54,7 +54,7 @@ using json = nlohmann::json;
     string p_js_prop_file;
     // TODO: egm_rate is currently not used!
     int  q0_start, qdot0_start, q_start, q_dot_start, q_ddot_start, goal_start, max_vel_loc, max_acc_loc;
-
+    int num_inp_ports, num_out_ports;
     //const unsigned int egm_rate;  // [Hz] (EGM communication rate, specified by the EGMActJoint RAPID instruction)
     int sequence = 0; // [-] (sequence number of a received EGM message)
     double time;                  // [seconds] (elapsed time during an EGM communication session)
@@ -67,7 +67,7 @@ using json = nlohmann::json;
     bool wait, flag = true;
     bool first_message, p_joint_space;
 
-    json js_prop; //json object to parse the OCP component properties
+    json jsp; //json object to parse the OCP component properties
 
 
     // Internal, mem alloc

@@ -8,6 +8,8 @@
     {
 
       this->addProperty("js_prop_file", p_js_prop_file).doc("The location to the json file containing all the info pertaining to the OCP.");
+      this->addPort("event_in", port_ein).doc("Events IN - eg supervisor");
+      this->addPort("event_out", port_eout).doc("Events OUT - eg faults to supervisor");
       //Sanity check on integer types TODO: throw error if fails and move to header
       if (casadi_c_int_width()!=sizeof(casadi_int)) {
         printf("Mismatch in integer size\n");
@@ -15,22 +17,24 @@
       if (casadi_c_real_width()!=sizeof(double)) {
         printf("Mismatch in double size\n");
       }
-
+      
     }
 
     OCPComponent::~OCPComponent()
     {
     }
 
-    bool OCPComponent::configureHook(){
+    bool OCPComponent::configureHook()
+    {
       //Adding properties
       Logger::In in(this->getName());
       Logger::log() << Logger::Info << "Entering configuration hook" << Logger::endl;
       FILE * pFile;
       pFile = fopen (p_js_prop_file.c_str(), "r");
       if (pFile == NULL) printf("Error opening file");
-      js_prop = json::parse(pFile);
+      jsp = json::parse(pFile);
 
+      p_horizon = jsp["horizon"].get<int>();
       double_props.resize(3, 0.0);
       integer_props.resize(2, 0); // = new int[2];
       vector_props = new vector<double>[2];
@@ -40,34 +44,31 @@
       this->addProperty("joint_pos", integer_props[1]).doc("Set to true if goal is in jointspace. False if Cartesian.");
       this->addProperty("max_vel", double_props[0]).doc("Maximum limits on joint velocities (rad/s)");
       this->addProperty("max_acc", double_props[1]).doc("Maximum limit on acceleration (rad/s^2)");
-      // p_numjoints = 14;
+
       //Adding ports
       /// Input
-      this->addPort("event_in", port_ein).doc("Events IN - eg supervisor");
-      // inp_ports.reserve(2);
-      inp_ports = new InputPort<vector<double>>[2];
-      this->addPort("q_actual", inp_ports[0]).doc("current joint positions [rad]");
-      this->addPort("qdot_actual", inp_ports[1]).doc("current joint velocities [rad/s]");
+      num_inp_ports = jsp["num_inp_ports"].get<int>();
+      inp_ports = new InputPort<vector<double>>[num_inp_ports];
+      for(int i = 0; i < num_inp_ports; i++){
+      this->addPort(jsp["inp_ports"][i]["name"].get<std::string>(),
+        inp_ports[i]).doc(jsp["inp_ports"][i]["desc"].get<std::string>());
+      }
       /// Output
+      num_out_ports = jsp["num_out_ports"].get<int>();
+      out_ports = new OutputPort<vector<double>>[num_out_ports];
+      for(int i = 0; i < num_out_ports; i++){
+      this->addPort(jsp["out_ports"][i]["name"].get<std::string>(),
+        out_ports[i]).doc(jsp["out_ports"][i]["desc"].get<std::string>());
+      }
 
-      this->addPort("event_out", port_eout).doc("Events OUT - eg faults to supervisor");
-      out_ports = new OutputPort<vector<double>>[3];
-      this->addPort("q_command", out_ports[0]).doc("Desired joint positions [rad]");
-      this->addPort("qdot_command", out_ports[1]).doc("Desired joint velocities [rad/s]");
-      this->addPort("qddot_command", out_ports[2]).doc("Desired joint accelerations [rad/s^2]");
-
-      p_horizon = js_prop["horizon"].get<int>();
-      p_ocp_file = js_prop["casadi_fun"].get<std::string>();
-      p_ocp_fun = js_prop["fun_name"].get<std::string>();
-
-      f_ret = casadi_c_push_file(p_ocp_file.c_str());
+      f_ret = casadi_c_push_file(jsp["casadi_fun"].get<std::string>().c_str());
       Logger::log() << Logger::Info << "Loaded configuration file" << Logger::endl;
       if (f_ret) {
-        cout << "Failed to load the ocp file " + p_ocp_file;
+        cout << "Failed to load the ocp file " << jsp["casadi_fun"].get<std::string>();
         return -1;
       }
       // Identify a Function by name
-      f_id = casadi_c_id(p_ocp_fun.c_str());
+      f_id = casadi_c_id(jsp["fun_name"].get<std::string>().c_str());
       n_in = casadi_c_n_in_id(f_id);
       n_out = casadi_c_n_out_id(f_id);
 
@@ -157,17 +158,17 @@
 
 
 
-        q0_start = js_prop["q0"]["start"].get<int>();
-        q_start = js_prop["q"]["start"].get<int>();
-        q_dot_start = js_prop["q_dot"]["start"].get<int>();
-        q_ddot_start = js_prop["q_ddot"]["start"].get<int>();
-        max_vel_loc = js_prop["max_vel"]["start"].get<int>();
-        max_acc_loc = js_prop["max_acc"]["start"].get<int>();
+        q0_start = jsp["q0"]["start"].get<int>();
+        q_start = jsp["q"]["start"].get<int>();
+        q_dot_start = jsp["q_dot"]["start"].get<int>();
+        q_ddot_start = jsp["q_ddot"]["start"].get<int>();
+        max_vel_loc = jsp["max_vel"]["start"].get<int>();
+        max_acc_loc = jsp["max_acc"]["start"].get<int>();
         if(integer_props[1]){
-          goal_start = js_prop["qdes"]["start"].get<int>();
+          goal_start = jsp["qdes"]["start"].get<int>();
         }
         else{
-          goal_start = js_prop["fk_des"]["start"].get<int>();
+          goal_start = jsp["fk_des"]["start"].get<int>();
         }
 
         //Initilializing the parameters to the correct values of x
@@ -233,8 +234,8 @@
           m_qdd_command[i] = 0;
         }
         Logger::log() << Logger::Debug << "OCP finished: writing event" << Logger::endl;
-        Logger::log() << Logger::Debug << p_ocp_fun + "_done" << Logger::endl;
-        port_eout.write(p_ocp_fun + "_done");
+        Logger::log() << Logger::Debug << jsp["fun_name"].get<std::string>() + "_done" << Logger::endl;
+        port_eout.write(jsp["fun_name"].get<std::string>() + "_done");
       }
       //Write the q, qd and qdd commands into the respective ports
       out_ports[0].write(m_q_command);
