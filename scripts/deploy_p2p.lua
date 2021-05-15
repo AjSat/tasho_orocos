@@ -49,7 +49,7 @@ fk_des:fromtab({ 1.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, -1.0, 0.4, 0.4, 0.4}) 
 ocp:getProperty("goal_des"):set(fk_des)
 ocp:getProperty("max_vel"):set(120/180.0*3.14159)
 ocp:getProperty("max_acc"):set(240/180*3.14159)
-ocp:getProperty("joint_pos"):set(false)
+ocp:getProperty("joint_pos"):set(0)
 
 depl:setActivity("ocp", 0, 99, rtt.globals.ORO_SCHED_RT)
 ocp:setPeriod(0.1)
@@ -99,12 +99,14 @@ robot_sim:configure()
 robot_sim:start()
 --configure hook of both components
 traj_interp:configure()
-
 traj_interp:start()
+
+sleep(0.1);
 ocp:start()
 sleep(6.0)
 -- --
 ocp:stop()
+
 robot_sim:stop()
 traj_interp:stop()
 ocp:cleanup()

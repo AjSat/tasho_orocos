@@ -48,15 +48,12 @@ using json = nlohmann::json;
     //Functions
     void port_writer();
     /// Properties
-    unsigned int p_numjoints;
-    double p_max_vel, p_max_acc;
+    int p_horizon;
     string p_ocp_file;
     string p_ocp_fun;
     string p_js_prop_file;
-    const double degrees_to_radians;
     // TODO: egm_rate is currently not used!
-    double p_ocp_rate;
-    int p_horizon, q0_start, qdot0_start, q_start, q_dot_start, q_ddot_start, goal_start, max_vel_loc, max_acc_loc;
+    int  q0_start, qdot0_start, q_start, q_dot_start, q_ddot_start, goal_start, max_vel_loc, max_acc_loc;
 
     //const unsigned int egm_rate;  // [Hz] (EGM communication rate, specified by the EGMActJoint RAPID instruction)
     int sequence = 0; // [-] (sequence number of a received EGM message)
@@ -66,7 +63,7 @@ using json = nlohmann::json;
     casadi_int n_in, n_out, sz_arg, sz_res, sz_iw, sz_w, *iw;
     double  *w, *x_val, *x_val2, *res0, *res2;
     double **res;
-    const double **arg; //TODO: hardcoded, hope that it is always high enough
+    const double **arg;
     bool wait, flag = true;
     bool first_message, p_joint_space;
 
@@ -75,7 +72,6 @@ using json = nlohmann::json;
 
     // Internal, mem alloc
     sensor_msgs::JointState m_joint_states;
-    vector<double> p_goal_des;
     vector<double> m_q_actual;
     vector<double> m_t_actual;
     vector<double> m_qdot_actual;
@@ -83,21 +79,18 @@ using json = nlohmann::json;
     vector<double> m_qd_command;
     vector<double> m_qdd_command;
 
+    // Creating a vector of doubles for the Properties
+    vector<double> *vector_props;
+    vector<int> integer_props;
+    vector<double> double_props;
+
     // Port Interface
     InputPort<string> port_ein;
-    InputPort<vector<double>> port_qdes;
-    InputPort<vector<double>> port_qdot_actual;
-    InputPort<vector<double>> port_q_actual;
+    InputPort<vector<double>> *inp_ports;
 
     // Output port
     OutputPort<string> port_eout;
-    OutputPort<vector<double>> port_qdot_command;
-    OutputPort<vector<double>> port_q_command;
-    OutputPort<vector<double>> port_qddot_command;
-    OutputPort<vector<double>> port_t_actual;
-    // OutputPort<motion_control_msgs::JointEfforts> port_joint_ext_jnt;
-    // OutputPort<sensor_msgs::JointState> port_joint_state;
-    // OutputPort<geometry_msgs::Pose> port_cart_pose;
+    OutputPort<vector<double>> *out_ports;
   };
 
 #endif // __OCP_COMPONENT_H__

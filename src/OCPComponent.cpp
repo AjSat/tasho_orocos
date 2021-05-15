@@ -4,7 +4,7 @@
 #define TIMEOUT 500 // [ms]
 
 
-    OCPComponent::OCPComponent(const string &name) : TaskContext(name), p_numjoints(14), p_horizon(15), degrees_to_radians(M_PI / 180.0),  p_ocp_rate(10), time(0.0), wait(true), p_max_vel(20.0/180*3.14159),  p_max_acc(120/180*3.14159)
+    OCPComponent::OCPComponent(const string &name) : TaskContext(name), p_horizon(15), time(0.0), wait(true)
     {
 
       this->addProperty("js_prop_file", p_js_prop_file).doc("The location to the json file containing all the info pertaining to the OCP.");
@@ -30,22 +30,31 @@
       pFile = fopen (p_js_prop_file.c_str(), "r");
       if (pFile == NULL) printf("Error opening file");
       js_prop = json::parse(pFile);
-      this->addProperty("ocp_rate", p_ocp_rate).doc("Sampling rate of the OCP");
-      this->addProperty("num_joints", p_numjoints).doc("Number of joints");
-      this->addProperty("goal_des", p_goal_des).doc("Desired final pose of the robot arm.");
-      this->addProperty("joint_pos", p_joint_space).doc("Set to true if goal is in jointspace. False if Cartesian.");
-      this->addProperty("max_vel", p_max_vel).doc("Maximum limits on joint velocities (rad/s)");
-      this->addProperty("max_acc", p_max_acc).doc("Maximum limit on acceleration (rad/s^2)");
+
+      double_props.resize(3, 0.0);
+      integer_props.resize(2, 0); // = new int[2];
+      vector_props = new vector<double>[2];
+      this->addProperty("ocp_rate", double_props[2]).doc("Sampling rate of the OCP");
+      this->addProperty("num_joints", integer_props[0]).doc("Number of joints");
+      this->addProperty("goal_des", vector_props[0]).doc("Desired final pose of the robot arm.");
+      this->addProperty("joint_pos", integer_props[1]).doc("Set to true if goal is in jointspace. False if Cartesian.");
+      this->addProperty("max_vel", double_props[0]).doc("Maximum limits on joint velocities (rad/s)");
+      this->addProperty("max_acc", double_props[1]).doc("Maximum limit on acceleration (rad/s^2)");
+      // p_numjoints = 14;
       //Adding ports
       /// Input
       this->addPort("event_in", port_ein).doc("Events IN - eg supervisor");
-      this->addPort("q_actual", port_q_actual).doc("current joint positions [rad]");
-      this->addPort("qdot_actual", port_qdot_actual).doc("current joint velocities [rad/s]");
+      // inp_ports.reserve(2);
+      inp_ports = new InputPort<vector<double>>[2];
+      this->addPort("q_actual", inp_ports[0]).doc("current joint positions [rad]");
+      this->addPort("qdot_actual", inp_ports[1]).doc("current joint velocities [rad/s]");
       /// Output
+
       this->addPort("event_out", port_eout).doc("Events OUT - eg faults to supervisor");
-      this->addPort("q_command", port_q_command).doc("Desired joint positions [rad]");
-      this->addPort("qdot_command", port_qdot_command).doc("Desired joint velocities [rad/s]");
-      this->addPort("qddot_command", port_qddot_command).doc("Desired joint accelerations [rad/s^2]");
+      out_ports = new OutputPort<vector<double>>[3];
+      this->addPort("q_command", out_ports[0]).doc("Desired joint positions [rad]");
+      this->addPort("qdot_command", out_ports[1]).doc("Desired joint velocities [rad/s]");
+      this->addPort("qddot_command", out_ports[2]).doc("Desired joint accelerations [rad/s^2]");
       return true;
     }
 
@@ -100,19 +109,20 @@
 
         /* Function input and output */
         //parameters that need to be set a0, q_dot0, s0, s_dot0 TODO: read all from orocos ports
-        double *q0 = new double[p_numjoints];
-        double *q_dot0 = new double[p_numjoints];
+        Logger::log() << Logger::Debug << "Value of num joints = " << integer_props[0] << Logger::endl;
+        double *q0 = new double[integer_props[0]];
+        double *q_dot0 = new double[integer_props[0]];
 
         // Assign a fixed size and memory to the vectors associated with the ports
-        m_q_actual.assign(p_numjoints, 0);
-        m_qdot_actual.assign(p_numjoints, 0);
-        m_q_command.assign(p_numjoints, 0);
-        m_qd_command.assign(p_numjoints, 0);
-        m_qdd_command.assign(p_numjoints, 0);
+        m_q_actual.assign(integer_props[0], 0);
+        m_qdot_actual.assign(integer_props[0], 0);
+        m_q_command.assign(integer_props[0], 0);
+        m_qd_command.assign(integer_props[0], 0);
+        m_qdd_command.assign(integer_props[0], 0);
 
-        if (port_q_actual.read(m_q_actual) != NoData){
+        if (inp_ports[0].read(m_q_actual) != NoData){
           Logger::log() << Logger::Debug << "Reading joint pos from robot_sim" << Logger::endl;
-          for(int i = 0; i<p_numjoints; i++){
+          for(int i = 0; i<integer_props[0]; i++){
             Logger::log() << Logger::Debug << "Initializing the joint values = " << m_q_actual[i] << Logger::endl;
             q0[i] = m_q_actual[i];
           }
@@ -121,9 +131,9 @@
           Logger::log() << Logger::Error << "Failed to read robot joint positions" << Logger::endl;
           return false;
         }
-        if (port_qdot_actual.read(m_qdot_actual) != NoData){
+        if (inp_ports[1].read(m_qdot_actual) != NoData){
           Logger::log() << Logger::Debug << "Read joint vel from robot_sim" << Logger::endl;
-          for(int i = 0; i<p_numjoints; i++){
+          for(int i = 0; i<integer_props[0]; i++){
             Logger::log() << Logger::Debug << "Initializing the joint vel values = " << m_qdot_actual[i] << Logger::endl;
             q_dot0[i] = m_qdot_actual[i];
           }
@@ -131,7 +141,7 @@
         else{
           Logger::log() << Logger::Debug
           << "Failed to read robot velocities. Assigning zero values." << Logger::endl;
-          double q_dot0_def[p_numjoints];
+          double q_dot0_def[integer_props[0]];
           q_dot0 = q_dot0_def;
         }
 
@@ -149,7 +159,7 @@
         q_ddot_start = js_prop["q_ddot"]["start"].get<int>();
         max_vel_loc = js_prop["max_vel"]["start"].get<int>();
         max_acc_loc = js_prop["max_acc"]["start"].get<int>();
-        if(p_joint_space){
+        if(integer_props[1]){
           goal_start = js_prop["qdes"]["start"].get<int>();
         }
         else{
@@ -157,7 +167,7 @@
         }
 
         //Initilializing the parameters to the correct values of x
-        for(int i = 0; i < p_numjoints; i++){
+        for(int i = 0; i < integer_props[0]; i++){
           x_val[q0_start + i] = q0[i];
           for(int j = 0; j < p_horizon + 1; j++){
             x_val[q_start + j*(p_horizon + 1) + i] = q0[i];
@@ -167,12 +177,12 @@
         Logger::log() << Logger::Debug << "Initialized decision" << Logger::endl;
 
         //Adding the desired final joint position
-        for(int i = 0; i < p_goal_des.size(); i++){
-            x_val[goal_start + i] = p_goal_des[i];
+        for(int i = 0; i < vector_props[0].size(); i++){
+            x_val[goal_start + i] = vector_props[0][i];
           }
 
-        x_val[max_acc_loc] = p_max_acc; //setting maximum acceleration.
-        x_val[max_vel_loc] = p_max_vel; //setting maximum velocity
+        x_val[max_acc_loc] = double_props[1]; //setting maximum acceleration.
+        x_val[max_vel_loc] = double_props[0]; //setting maximum velocity
 
         // Allocate memory (thread-safe)
         Logger::log() << Logger::Debug << "Allocating memory" << Logger::endl;
@@ -180,9 +190,7 @@
 
         /* Evaluate the function */
         arg[0] = x_val;
-        arg[1] = x_val2;
         res[0] = res0;
-        res[1] = res2;
         Logger::log() << Logger::Debug << "Creating arguments for casadi function" << Logger::endl;
 
         // Checkout thread-local memory (not thread-safe)
@@ -209,14 +217,14 @@
       //Apply the control inputs
       //read values for q_command, q_d_command and q_dd_command
       if(sequence < p_horizon){
-        for(i = 0; i < p_numjoints; i++){
-          m_q_command[i] = res0[i +  sequence*p_numjoints];
-          m_qd_command[i] = res0[q_dot_start + i + sequence*p_numjoints];
-          m_qdd_command[i] = res0[q_ddot_start + i + sequence*p_numjoints];
+        for(i = 0; i < integer_props[0]; i++){
+          m_q_command[i] = res0[i +  sequence*integer_props[0]];
+          m_qd_command[i] = res0[q_dot_start + i + sequence*integer_props[0]];
+          m_qdd_command[i] = res0[q_ddot_start + i + sequence*integer_props[0]];
         }
       }
       else if(sequence == p_horizon){
-        for(i = 0; i < p_numjoints; i++){
+        for(i = 0; i < integer_props[0]; i++){
           m_qd_command[i] = 0;
           m_qdd_command[i] = 0;
         }
@@ -225,10 +233,10 @@
         port_eout.write(p_ocp_fun + "_done");
       }
       //Write the q, qd and qdd commands into the respective ports
-      port_q_command.write(m_q_command);
+      out_ports[0].write(m_q_command);
       // Logger::log() << Logger::Debug << "Writing into velocity port for sequence " << sequence <<  Logger::endl;
-      port_qdot_command.write(m_qd_command);
-      port_qddot_command.write(m_qdd_command);
+      out_ports[1].write(m_qd_command);
+      out_ports[2].write(m_qdd_command);
       sequence++;
       this->trigger(); //TODO: shouldn't this trigger be removed?
     }
@@ -236,13 +244,16 @@
     void OCPComponent::stopHook()
     {
       Logger::log() << Logger::Debug << "Entering the stopHook" << Logger::endl;
+      free(x_val);
+      free(res0);
+      free(w);
     }
 
     void OCPComponent::cleanupHook()
     {
       Logger::log() << Logger::Debug << "Entering the cleanupHook" << Logger::endl;
       casadi_c_decref_id(f_id);
-      // casadi_c_pop();
+      casadi_c_pop();
       Logger::log() << Logger::Debug << "Exiting the cleanupHook" << Logger::endl;
 
     }
