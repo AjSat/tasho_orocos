@@ -147,10 +147,10 @@ function updateHook()
      j_pos_vals_ref:fromtab(j_posr:totab())
    end
 
-   fs, port_ein=iface.ports.event_in:read()
-   if fs ~='NoData' then
-     print("OCP finished")
-   end
+   -- fs, port_ein=iface.ports.event_in:read()
+   -- if fs ~='NoData' then
+   --   print("OCP finished")
+   -- end
 
 
 

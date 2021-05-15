@@ -54,8 +54,8 @@ ocp:getProperty("joint_pos"):set(0)
 depl:setActivity("ocp", 0, 99, rtt.globals.ORO_SCHED_RT)
 ocp:setPeriod(0.1)
 cp = rtt.Variable("ConnPolicy")
-cp.type=1   -- type buffered
-cp.size=1  -- buffer size
+-- cp.type=1   -- type buffered
+-- cp.size=1  -- buffer size
 
 depl:loadComponent("traj_interp", "OCL::LuaComponent")
 traj_interp = depl:getPeer("traj_interp")
@@ -100,13 +100,13 @@ robot_sim:start()
 --configure hook of both components
 traj_interp:configure()
 traj_interp:start()
-
+for i = 1,5 do
 sleep(0.1);
 ocp:start()
 sleep(6.0)
 -- --
 ocp:stop()
-
+end
 robot_sim:stop()
 traj_interp:stop()
 ocp:cleanup()

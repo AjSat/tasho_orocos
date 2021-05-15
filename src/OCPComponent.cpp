@@ -55,6 +55,61 @@
       this->addPort("q_command", out_ports[0]).doc("Desired joint positions [rad]");
       this->addPort("qdot_command", out_ports[1]).doc("Desired joint velocities [rad/s]");
       this->addPort("qddot_command", out_ports[2]).doc("Desired joint accelerations [rad/s^2]");
+
+      p_horizon = js_prop["horizon"].get<int>();
+      p_ocp_file = js_prop["casadi_fun"].get<std::string>();
+      p_ocp_fun = js_prop["fun_name"].get<std::string>();
+
+      f_ret = casadi_c_push_file(p_ocp_file.c_str());
+      Logger::log() << Logger::Info << "Loaded configuration file" << Logger::endl;
+      if (f_ret) {
+        cout << "Failed to load the ocp file " + p_ocp_file;
+        return -1;
+      }
+      // Identify a Function by name
+      f_id = casadi_c_id(p_ocp_fun.c_str());
+      n_in = casadi_c_n_in_id(f_id);
+      n_out = casadi_c_n_out_id(f_id);
+
+      sz_arg=n_in; sz_res=n_out; sz_iw=0; sz_w=0;
+
+      const casadi_int *sp_i;
+      sp_i = casadi_c_sparsity_in_id(f_id, 0);
+      casadi_int nrow = *sp_i++; /* Number of rows */
+      casadi_int ncol = *sp_i++; /* Number of columns */
+      casadi_int nnz = sp_i[ncol]; /* Number of nonzeros */
+
+      sp_i = casadi_c_sparsity_out_id(f_id, 0);
+      nrow = *sp_i++; /* Number of rows */
+      ncol = *sp_i++; /* Number of columns */
+      casadi_int nnz_out = sp_i[ncol]; /* Number of nonzeros */
+
+      sz_arg=n_in; sz_res=n_out; sz_iw=0; sz_w=0;
+
+      casadi_c_work_id(f_id, &sz_arg, &sz_res, &sz_iw, &sz_w);
+      printf("Work vector sizes:\n");
+      printf("sz_arg = %lld, sz_res = %lld, sz_iw = %lld, sz_w = %lld\n\n",
+          sz_arg, sz_res, sz_iw, sz_w);
+      Logger::log() << Logger::Debug << "Got work ids" << Logger::endl;
+
+          /* Allocate input/output buffers and work vectors*/
+
+      res = new double*[sz_res];
+      arg = new const double*[sz_arg];
+      iw = new casadi_int[sz_iw];
+      w = new double[sz_w];
+      for(int i = 0; i < sz_w; i++){
+        w[i] = 0;
+      }
+
+      x_val = new double[nnz];
+      res0 = new double[nnz_out];
+      for(int i = 0; i < nnz; i++){
+        x_val[i] = 0;
+        res0[i] = 0;
+      }
+      Logger::log() << Logger::Debug << "declared variables" << Logger::endl;
+      Logger::log() << Logger::Info << "Exiting configuration hook" << Logger::endl;
       return true;
     }
 
@@ -62,56 +117,13 @@
     {
 
         Logger::In in(this->getName());
-        Logger::log() << Logger::Info << "Entering activate hook" << Logger::endl;
-
-        p_horizon = js_prop["horizon"].get<int>();
-        p_ocp_file = js_prop["casadi_fun"].get<std::string>();
-        p_ocp_fun = js_prop["fun_name"].get<std::string>();
-
-        f_ret = casadi_c_push_file(p_ocp_file.c_str());
-        Logger::log() << Logger::Info << "Loaded configuration file" << Logger::endl;
-        if (f_ret) {
-          cout << "Failed to load the ocp file " + p_ocp_file;
-          return -1;
-        }
-        // Identify a Function by name
-        f_id = casadi_c_id(p_ocp_fun.c_str());
-        n_in = casadi_c_n_in_id(f_id);
-        n_out = casadi_c_n_out_id(f_id);
-
-        sz_arg=n_in; sz_res=n_out; sz_iw=0; sz_w=0;
-
-        const casadi_int *sp_i;
-        sp_i = casadi_c_sparsity_in_id(f_id, 0);
-        casadi_int nrow = *sp_i++; /* Number of rows */
-        casadi_int ncol = *sp_i++; /* Number of columns */
-        casadi_int nnz = sp_i[ncol]; /* Number of nonzeros */
-
-        sp_i = casadi_c_sparsity_out_id(f_id, 0);
-        nrow = *sp_i++; /* Number of rows */
-        ncol = *sp_i++; /* Number of columns */
-        casadi_int nnz_out = sp_i[ncol]; /* Number of nonzeros */
-
-        sz_arg=n_in; sz_res=n_out; sz_iw=0; sz_w=0;
-
-        casadi_c_work_id(f_id, &sz_arg, &sz_res, &sz_iw, &sz_w);
-        printf("Work vector sizes:\n");
-        printf("sz_arg = %lld, sz_res = %lld, sz_iw = %lld, sz_w = %lld\n\n",
-            sz_arg, sz_res, sz_iw, sz_w);
-        Logger::log() << Logger::Debug << "Got work ids" << Logger::endl;
-
-            /* Allocate input/output buffers and work vectors*/
-
-        res = new double*[sz_res];
-        arg = new const double*[sz_arg];
-        iw = new casadi_int[sz_iw];
-        w = new double[sz_w];
+        Logger::log() << Logger::Info << "Entering start hook" << Logger::endl;
 
         /* Function input and output */
         //parameters that need to be set a0, q_dot0, s0, s_dot0 TODO: read all from orocos ports
         Logger::log() << Logger::Debug << "Value of num joints = " << integer_props[0] << Logger::endl;
-        double *q0 = new double[integer_props[0]];
-        double *q_dot0 = new double[integer_props[0]];
+        vector<double> q0(integer_props[0],0);
+        vector<double> q_dot0(integer_props[0],0);
 
         // Assign a fixed size and memory to the vectors associated with the ports
         m_q_actual.assign(integer_props[0], 0);
@@ -141,17 +153,9 @@
         else{
           Logger::log() << Logger::Debug
           << "Failed to read robot velocities. Assigning zero values." << Logger::endl;
-          double q_dot0_def[integer_props[0]];
-          q_dot0 = q_dot0_def;
         }
 
-        x_val = new double[nnz];
-        res0 = new double[nnz_out];
-        for(int i = 0; i < nnz; i++){
-          x_val[i] = 0;
-          res0[i] = 0;
-        }
-        Logger::log() << Logger::Debug << "declared variables" << Logger::endl;
+
 
         q0_start = js_prop["q0"]["start"].get<int>();
         q_start = js_prop["q"]["start"].get<int>();
@@ -170,7 +174,7 @@
         for(int i = 0; i < integer_props[0]; i++){
           x_val[q0_start + i] = q0[i];
           for(int j = 0; j < p_horizon + 1; j++){
-            x_val[q_start + j*(p_horizon + 1) + i] = q0[i];
+            x_val[q_start + j*(integer_props[0]) + i] = q0[i];
           }
         }
 
@@ -206,7 +210,7 @@
           return false;
         }
 
-        Logger::log() << Logger::Info << "Exiting activate hook" << Logger::endl;
+        Logger::log() << Logger::Info << "Exiting start hook" << Logger::endl;
         return true;
     }
 
@@ -244,9 +248,7 @@
     void OCPComponent::stopHook()
     {
       Logger::log() << Logger::Debug << "Entering the stopHook" << Logger::endl;
-      free(x_val);
-      free(res0);
-      free(w);
+      sequence = 0;
     }
 
     void OCPComponent::cleanupHook()
@@ -254,6 +256,9 @@
       Logger::log() << Logger::Debug << "Entering the cleanupHook" << Logger::endl;
       casadi_c_decref_id(f_id);
       casadi_c_pop();
+      free(x_val);
+      free(res0);
+      free(w);
       Logger::log() << Logger::Debug << "Exiting the cleanupHook" << Logger::endl;
 
     }
