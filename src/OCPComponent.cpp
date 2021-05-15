@@ -4,28 +4,10 @@
 #define TIMEOUT 500 // [ms]
 
 
-    OCPComponent::OCPComponent(const string &name) : TaskContext(name, PreOperational), p_numjoints(14), p_horizon(15), degrees_to_radians(M_PI / 180.0),  p_ocp_rate(10), time(0.0), wait(true), p_max_vel(20.0/180*3.14159), p_joint_space(true), p_max_acc(120/180*3.14159), p_left_arm(true)
+    OCPComponent::OCPComponent(const string &name) : TaskContext(name), p_numjoints(14), p_horizon(15), degrees_to_radians(M_PI / 180.0),  p_ocp_rate(10), time(0.0), wait(true), p_max_vel(20.0/180*3.14159),  p_max_acc(120/180*3.14159)
     {
-      //Adding properties
-      this->addProperty("ocp_rate", p_ocp_rate).doc("Sampling rate of the OCP");
-      this->addProperty("num_joints", p_numjoints).doc("Number of joints");
+
       this->addProperty("js_prop_file", p_js_prop_file).doc("The location to the json file containing all the info pertaining to the OCP.");
-      this->addProperty("goal_des", p_goal_des).doc("Desired final pose of the robot arm.");
-      this->addProperty("joint_pos", p_joint_space).doc("Set to true if goal is in jointspace. False if Cartesian.");
-      this->addProperty("max_vel", p_max_vel).doc("Maximum limits on joint velocities (rad/s)");
-      this->addProperty("max_acc", p_max_acc).doc("Maximum limit on acceleration (rad/s^2)");
-      //Adding ports
-      /// Input
-      this->addPort("event_in", port_ein).doc("Events IN - eg supervisor");
-      this->addPort("q_actual", port_q_actual).doc("current joint positions [rad]");
-      this->addPort("qdot_actual", port_qdot_actual).doc("current joint velocities [rad/s]");
-      /// Output
-      this->addPort("event_out", port_eout).doc("Events OUT - eg faults to supervisor");
-      this->addPort("q_command", port_q_command).doc("Desired joint positions [rad]");
-      this->addPort("qdot_command", port_qdot_command).doc("Desired joint velocities [rad/s]");
-      this->addPort("qddot_command", port_qddot_command).doc("Desired joint accelerations [rad/s^2]");
-
-
       //Sanity check on integer types TODO: throw error if fails and move to header
       if (casadi_c_int_width()!=sizeof(casadi_int)) {
         printf("Mismatch in integer size\n");
@@ -40,16 +22,39 @@
     {
     }
 
-    bool OCPComponent::configureHook()
+    bool OCPComponent::configureHook(){
+      //Adding properties
+      Logger::In in(this->getName());
+      Logger::log() << Logger::Info << "Entering configuration hook" << Logger::endl;
+      FILE * pFile;
+      pFile = fopen (p_js_prop_file.c_str(), "r");
+      if (pFile == NULL) printf("Error opening file");
+      js_prop = json::parse(pFile);
+      this->addProperty("ocp_rate", p_ocp_rate).doc("Sampling rate of the OCP");
+      this->addProperty("num_joints", p_numjoints).doc("Number of joints");
+      this->addProperty("goal_des", p_goal_des).doc("Desired final pose of the robot arm.");
+      this->addProperty("joint_pos", p_joint_space).doc("Set to true if goal is in jointspace. False if Cartesian.");
+      this->addProperty("max_vel", p_max_vel).doc("Maximum limits on joint velocities (rad/s)");
+      this->addProperty("max_acc", p_max_acc).doc("Maximum limit on acceleration (rad/s^2)");
+      //Adding ports
+      /// Input
+      this->addPort("event_in", port_ein).doc("Events IN - eg supervisor");
+      this->addPort("q_actual", port_q_actual).doc("current joint positions [rad]");
+      this->addPort("qdot_actual", port_qdot_actual).doc("current joint velocities [rad/s]");
+      /// Output
+      this->addPort("event_out", port_eout).doc("Events OUT - eg faults to supervisor");
+      this->addPort("q_command", port_q_command).doc("Desired joint positions [rad]");
+      this->addPort("qdot_command", port_qdot_command).doc("Desired joint velocities [rad/s]");
+      this->addPort("qddot_command", port_qddot_command).doc("Desired joint accelerations [rad/s^2]");
+      return true;
+    }
+
+    bool OCPComponent::startHook()
     {
 
         Logger::In in(this->getName());
-        Logger::log() << Logger::Debug << "Entering configuration hook" << Logger::endl;
+        Logger::log() << Logger::Info << "Entering activate hook" << Logger::endl;
 
-        FILE * pFile;
-        pFile = fopen (p_js_prop_file.c_str(), "r");
-        if (pFile == NULL) perror ("Error opening file");
-        js_prop = json::parse(pFile);
         p_horizon = js_prop["horizon"].get<int>();
         p_ocp_file = js_prop["casadi_fun"].get<std::string>();
         p_ocp_fun = js_prop["fun_name"].get<std::string>();
@@ -193,16 +198,7 @@
           return false;
         }
 
-        Logger::log() << Logger::Debug << "Exiting configuration hook" << Logger::endl;
-        return true;
-    }
-
-    bool OCPComponent::startHook()
-    {
-
-            Logger::log() << Logger::Debug << "Entering startHook" << Logger::endl;
-            // Logger::In in(this->getName());
-
+        Logger::log() << Logger::Info << "Exiting activate hook" << Logger::endl;
         return true;
     }
 

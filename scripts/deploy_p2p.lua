@@ -28,18 +28,20 @@ depl:import("rtt_std_msgs")
 
 ros:import("yumi_tasho")
 depl:import("yumi_tasho")
+dir = ros:find("yumi_tasho")
 depl:import("rtt_sensor_msgs")
 depl:import("rtt_motion_control_msgs")
 
 depl:loadComponent("ocp", "OCPComponent")
 ocp = depl:getPeer("ocp")
+ocp:getProperty("js_prop_file"):set(dir .. "/casadi_files/leftp2p_ocp_fun2_property.json")
+ocp:configure()
 ros:import("etasl_iohandler_jointstate")
 --Configuration
 --6511 is ROB_L 6512 is ROB_R
 ocp:getProperty("ocp_rate"):set(10) -- in Hz
 ocp:getProperty("num_joints"):set(7) -- in Hz
-dir = ros:find("yumi_tasho")
-ocp:getProperty("js_prop_file"):set(dir .. "/casadi_files/leftp2p_ocp_fun2_property.json")
+
 
 fk_des = rtt.Variable("array")
 -- fk_des:fromtab({ 1.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, -1.0, 0.4, 0.4, 0.4}) --left
@@ -96,7 +98,6 @@ depl:stream("robot_sim.jointpos", ros:topic("/joint_states_left_from_orocos"))
 robot_sim:configure()
 robot_sim:start()
 --configure hook of both components
-ocp:configure()
 traj_interp:configure()
 
 traj_interp:start()

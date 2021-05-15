@@ -37,7 +37,6 @@ using json = nlohmann::json;
   public:
     OCPComponent(const std::string &name);
     virtual ~OCPComponent();
-
     virtual bool configureHook();
     virtual bool startHook();
     virtual void updateHook();
@@ -69,7 +68,7 @@ using json = nlohmann::json;
     double **res;
     const double **arg; //TODO: hardcoded, hope that it is always high enough
     bool wait, flag = true;
-    bool first_message, p_left_arm, p_joint_space;
+    bool first_message, p_joint_space;
 
     json js_prop; //json object to parse the OCP component properties
 
