@@ -53,7 +53,7 @@ using json = nlohmann::json;
     string p_ocp_fun;
     string p_js_prop_file;
     // TODO: egm_rate is currently not used!
-    int  q0_start, qdot0_start, q_start, q_dot_start, q_ddot_start, goal_start, max_vel_loc, max_acc_loc;
+    int  goal_start, max_vel_loc, max_acc_loc;
     int num_inp_ports, num_out_ports;
     //const unsigned int egm_rate;  // [Hz] (EGM communication rate, specified by the EGMActJoint RAPID instruction)
     int sequence = 0; // [-] (sequence number of a received EGM message)
@@ -71,13 +71,8 @@ using json = nlohmann::json;
 
 
     // Internal, mem alloc
-    sensor_msgs::JointState m_joint_states;
-    vector<double> m_q_actual;
-    vector<double> m_t_actual;
-    vector<double> m_qdot_actual;
-    vector<double> m_q_command;
-    vector<double> m_qd_command;
-    vector<double> m_qdd_command;
+    vector<double> *m_inp_ports;
+    vector<double> *m_out_ports;
 
     // Creating a vector of doubles for the Properties
     vector<double> *vector_props;

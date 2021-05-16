@@ -81,7 +81,7 @@ depl:connectPeers("traj_interp","ocp")
 -- Connecting the ports between the components
 depl:connect("traj_interp.joint_vel_out_arr", "robot_sim.jointvel", cp)
 depl:connect("robot_sim.jointpos", "ocp.q_actual", cp)
-depl:connect("robot_sim.jointvel_out", "ocp.qdot_actual", cp)
+-- depl:connect("robot_sim.jointvel_out", "ocp.qdot_actual", cp)
 depl:connect("traj_interp.event_in", "ocp.event_out", cp)
 depl:connect("traj_interp.joint_pos_in_ref", "ocp.q_command", cp)
 depl:connect("traj_interp.joint_vel_in_ref", "ocp.qdot_command", cp)

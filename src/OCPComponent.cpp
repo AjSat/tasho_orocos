@@ -17,7 +17,7 @@
       if (casadi_c_real_width()!=sizeof(double)) {
         printf("Mismatch in double size\n");
       }
-      
+
     }
 
     OCPComponent::~OCPComponent()
@@ -49,17 +49,29 @@
       /// Input
       num_inp_ports = jsp["num_inp_ports"].get<int>();
       inp_ports = new InputPort<vector<double>>[num_inp_ports];
+      m_inp_ports = new vector<double>[num_inp_ports];
       for(int i = 0; i < num_inp_ports; i++){
-      this->addPort(jsp["inp_ports"][i]["name"].get<std::string>(),
-        inp_ports[i]).doc(jsp["inp_ports"][i]["desc"].get<std::string>());
+        //Creating input ports
+        this->addPort(jsp["inp_ports"][i]["name"].get<std::string>(),
+          inp_ports[i]).doc(jsp["inp_ports"][i]["desc"].get<std::string>());
+        // Assigning memory and size to the message vectors of the port
+        m_inp_ports[i].resize(jsp[jsp["inp_ports"][i]["var"].get<std::string>()]
+          ["size"].get<int>(), 0);
       }
       /// Output
       num_out_ports = jsp["num_out_ports"].get<int>();
       out_ports = new OutputPort<vector<double>>[num_out_ports];
+      m_out_ports = new vector<double>[num_out_ports];
       for(int i = 0; i < num_out_ports; i++){
-      this->addPort(jsp["out_ports"][i]["name"].get<std::string>(),
-        out_ports[i]).doc(jsp["out_ports"][i]["desc"].get<std::string>());
+        //Creating output ports
+        this->addPort(jsp["out_ports"][i]["name"].get<std::string>(),
+          out_ports[i]).doc(jsp["out_ports"][i]["desc"].get<std::string>());
+        // Assigning memory and size to the message vectors of the port
+        m_out_ports[i].resize(jsp[jsp["out_ports"][i]["var"].get<std::string>()]
+          ["size"].get<int>(), 0);
       }
+
+      // Assign a fixed size and memory to the vectors associated with the ports
 
       f_ret = casadi_c_push_file(jsp["casadi_fun"].get<std::string>().c_str());
       Logger::log() << Logger::Info << "Loaded configuration file" << Logger::endl;
@@ -93,8 +105,7 @@
           sz_arg, sz_res, sz_iw, sz_w);
       Logger::log() << Logger::Debug << "Got work ids" << Logger::endl;
 
-          /* Allocate input/output buffers and work vectors*/
-
+      /* Allocate input/output buffers and work vectors*/
       res = new double*[sz_res];
       arg = new const double*[sz_arg];
       iw = new casadi_int[sz_iw];
@@ -119,75 +130,33 @@
 
         Logger::In in(this->getName());
         Logger::log() << Logger::Info << "Entering start hook" << Logger::endl;
-
+        sequence = 0;
         /* Function input and output */
         //parameters that need to be set a0, q_dot0, s0, s_dot0 TODO: read all from orocos ports
         Logger::log() << Logger::Debug << "Value of num joints = " << integer_props[0] << Logger::endl;
         vector<double> q0(integer_props[0],0);
-        vector<double> q_dot0(integer_props[0],0);
 
-        // Assign a fixed size and memory to the vectors associated with the ports
-        m_q_actual.assign(integer_props[0], 0);
-        m_qdot_actual.assign(integer_props[0], 0);
-        m_q_command.assign(integer_props[0], 0);
-        m_qd_command.assign(integer_props[0], 0);
-        m_qdd_command.assign(integer_props[0], 0);
-
-        if (inp_ports[0].read(m_q_actual) != NoData){
-          Logger::log() << Logger::Debug << "Reading joint pos from robot_sim" << Logger::endl;
-          for(int i = 0; i<integer_props[0]; i++){
-            Logger::log() << Logger::Debug << "Initializing the joint values = " << m_q_actual[i] << Logger::endl;
-            q0[i] = m_q_actual[i];
-          }
-        }
-        else{
-          Logger::log() << Logger::Error << "Failed to read robot joint positions" << Logger::endl;
-          return false;
-        }
-        if (inp_ports[1].read(m_qdot_actual) != NoData){
-          Logger::log() << Logger::Debug << "Read joint vel from robot_sim" << Logger::endl;
-          for(int i = 0; i<integer_props[0]; i++){
-            Logger::log() << Logger::Debug << "Initializing the joint vel values = " << m_qdot_actual[i] << Logger::endl;
-            q_dot0[i] = m_qdot_actual[i];
-          }
-        }
-        else{
-          Logger::log() << Logger::Debug
-          << "Failed to read robot velocities. Assigning zero values." << Logger::endl;
-        }
-
-
-
-        q0_start = jsp["q0"]["start"].get<int>();
-        q_start = jsp["q"]["start"].get<int>();
-        q_dot_start = jsp["q_dot"]["start"].get<int>();
-        q_ddot_start = jsp["q_ddot"]["start"].get<int>();
-        max_vel_loc = jsp["max_vel"]["start"].get<int>();
-        max_acc_loc = jsp["max_acc"]["start"].get<int>();
-        if(integer_props[1]){
-          goal_start = jsp["qdes"]["start"].get<int>();
-        }
-        else{
-          goal_start = jsp["fk_des"]["start"].get<int>();
-        }
-
-        //Initilializing the parameters to the correct values of x
-        for(int i = 0; i < integer_props[0]; i++){
-          x_val[q0_start + i] = q0[i];
-          for(int j = 0; j < p_horizon + 1; j++){
-            x_val[q_start + j*(integer_props[0]) + i] = q0[i];
+        // Read messages from the input ports
+        for(int i = 0; i < num_inp_ports; i++){
+          if (inp_ports[i].read(m_inp_ports[i]) != NoData){
+            Logger::log() << Logger::Debug << "Reading data from port " <<
+              jsp["inp_ports"][i]["name"].get<std::string>() << Logger::endl;
+            //assign the read messages to the OCP parameters
+            for(int j = 0; j < m_inp_ports[i].size(); j++)
+              x_val[jsp[jsp["inp_ports"][i]["var"].get<std::string>()]
+                ["start"].get<int>() + j] = m_inp_ports[i][j];
           }
         }
 
-        Logger::log() << Logger::Debug << "Initialized decision" << Logger::endl;
+        goal_start = jsp["goal_des"]["start"].get<int>();
 
         //Adding the desired final joint position
         for(int i = 0; i < vector_props[0].size(); i++){
             x_val[goal_start + i] = vector_props[0][i];
           }
 
-        x_val[max_acc_loc] = double_props[1]; //setting maximum acceleration.
-        x_val[max_vel_loc] = double_props[0]; //setting maximum velocity
+        x_val[jsp["max_acc"]["start"].get<int>()] = double_props[1]; //setting maximum acceleration.
+        x_val[jsp["max_vel"]["start"].get<int>()] = double_props[0]; //setting maximum velocity
 
         // Allocate memory (thread-safe)
         Logger::log() << Logger::Debug << "Allocating memory" << Logger::endl;
@@ -220,28 +189,29 @@
 
       Logger::log() << Logger::Debug << "Entering UpdateHook" << Logger::endl;
       //Apply the control inputs
-      //read values for q_command, q_d_command and q_dd_command
+      // Read the messages meant for the output ports
+      std::string out_port_var;
       if(sequence < p_horizon){
-        for(i = 0; i < integer_props[0]; i++){
-          m_q_command[i] = res0[i +  sequence*integer_props[0]];
-          m_qd_command[i] = res0[q_dot_start + i + sequence*integer_props[0]];
-          m_qdd_command[i] = res0[q_ddot_start + i + sequence*integer_props[0]];
+        for(i = 0; i < num_out_ports; i++){
+          out_port_var = jsp["out_ports"][i]["var"].get<std::string>();
+          for(int j = 0; j < m_out_ports[i].size(); j++)
+            m_out_ports[i][j] = res0[jsp[out_port_var]["start"].get<int>() + j +
+              sequence*m_out_ports[i].size()];
         }
       }
+
       else if(sequence == p_horizon){
-        for(i = 0; i < integer_props[0]; i++){
-          m_qd_command[i] = 0;
-          m_qdd_command[i] = 0;
+        for(i = 0; i < m_out_ports[2].size(); i++){
+          m_out_ports[1][i] = 0;
+          m_out_ports[2][i] = 0;
         }
         Logger::log() << Logger::Debug << "OCP finished: writing event" << Logger::endl;
         Logger::log() << Logger::Debug << jsp["fun_name"].get<std::string>() + "_done" << Logger::endl;
         port_eout.write(jsp["fun_name"].get<std::string>() + "_done");
       }
-      //Write the q, qd and qdd commands into the respective ports
-      out_ports[0].write(m_q_command);
-      // Logger::log() << Logger::Debug << "Writing into velocity port for sequence " << sequence <<  Logger::endl;
-      out_ports[1].write(m_qd_command);
-      out_ports[2].write(m_qdd_command);
+
+      //Writing messages to the output ports
+      for(int i = 0; i < num_out_ports; i++) out_ports[i].write(m_out_ports[i]);
       sequence++;
       this->trigger(); //TODO: shouldn't this trigger be removed?
     }
