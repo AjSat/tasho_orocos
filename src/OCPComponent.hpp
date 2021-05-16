@@ -47,15 +47,12 @@ using json = nlohmann::json;
 
     //Functions
     void port_writer();
-    /// Properties
+
     int p_horizon;
     string p_ocp_file;
     string p_ocp_fun;
     string p_js_prop_file;
-    // TODO: egm_rate is currently not used!
-    int  goal_start, max_vel_loc, max_acc_loc;
     int num_inp_ports, num_out_ports;
-    //const unsigned int egm_rate;  // [Hz] (EGM communication rate, specified by the EGMActJoint RAPID instruction)
     int sequence = 0; // [-] (sequence number of a received EGM message)
     double time;                  // [seconds] (elapsed time during an EGM communication session)
 
@@ -65,10 +62,9 @@ using json = nlohmann::json;
     double **res;
     const double **arg;
     bool wait, flag = true;
-    bool first_message, p_joint_space;
+    bool first_message;
 
     json jsp; //json object to parse the OCP component properties
-
 
     // Internal, mem alloc
     vector<double> *m_inp_ports;
@@ -76,8 +72,6 @@ using json = nlohmann::json;
 
     // Creating a vector of doubles for the Properties
     vector<double> *vector_props;
-    vector<int> integer_props;
-    vector<double> double_props;
 
     // Port Interface
     InputPort<string> port_ein;

@@ -35,15 +35,14 @@
       jsp = json::parse(pFile);
 
       p_horizon = jsp["horizon"].get<int>();
-      double_props.resize(3, 0.0);
-      integer_props.resize(2, 0); // = new int[2];
-      vector_props = new vector<double>[2];
-      this->addProperty("ocp_rate", double_props[2]).doc("Sampling rate of the OCP");
-      this->addProperty("num_joints", integer_props[0]).doc("Number of joints");
-      this->addProperty("goal_des", vector_props[0]).doc("Desired final pose of the robot arm.");
-      this->addProperty("joint_pos", integer_props[1]).doc("Set to true if goal is in jointspace. False if Cartesian.");
-      this->addProperty("max_vel", double_props[0]).doc("Maximum limits on joint velocities (rad/s)");
-      this->addProperty("max_acc", double_props[1]).doc("Maximum limit on acceleration (rad/s^2)");
+
+      //Adding Properties
+      //Double type Properties
+      vector_props = new vector<double>[jsp["num_props"].get<int>()];
+      for(int i = 0; i < jsp["num_props"].get<int>(); i++){
+        this->addProperty(jsp["props"][i]["name"].get<std::string>(),
+          vector_props[i]).doc(jsp["props"][i]["desc"].get<std::string>());
+      }
 
       //Adding ports
       /// Input
@@ -71,8 +70,6 @@
           ["size"].get<int>(), 0);
       }
 
-      // Assign a fixed size and memory to the vectors associated with the ports
-
       f_ret = casadi_c_push_file(jsp["casadi_fun"].get<std::string>().c_str());
       Logger::log() << Logger::Info << "Loaded configuration file" << Logger::endl;
       if (f_ret) {
@@ -83,20 +80,15 @@
       f_id = casadi_c_id(jsp["fun_name"].get<std::string>().c_str());
       n_in = casadi_c_n_in_id(f_id);
       n_out = casadi_c_n_out_id(f_id);
-
-      sz_arg=n_in; sz_res=n_out; sz_iw=0; sz_w=0;
-
       const casadi_int *sp_i;
       sp_i = casadi_c_sparsity_in_id(f_id, 0);
       casadi_int nrow = *sp_i++; /* Number of rows */
       casadi_int ncol = *sp_i++; /* Number of columns */
       casadi_int nnz = sp_i[ncol]; /* Number of nonzeros */
-
       sp_i = casadi_c_sparsity_out_id(f_id, 0);
       nrow = *sp_i++; /* Number of rows */
       ncol = *sp_i++; /* Number of columns */
       casadi_int nnz_out = sp_i[ncol]; /* Number of nonzeros */
-
       sz_arg=n_in; sz_res=n_out; sz_iw=0; sz_w=0;
 
       casadi_c_work_id(f_id, &sz_arg, &sz_res, &sz_iw, &sz_w);
@@ -131,10 +123,6 @@
         Logger::In in(this->getName());
         Logger::log() << Logger::Info << "Entering start hook" << Logger::endl;
         sequence = 0;
-        /* Function input and output */
-        //parameters that need to be set a0, q_dot0, s0, s_dot0 TODO: read all from orocos ports
-        Logger::log() << Logger::Debug << "Value of num joints = " << integer_props[0] << Logger::endl;
-        vector<double> q0(integer_props[0],0);
 
         // Read messages from the input ports
         for(int i = 0; i < num_inp_ports; i++){
@@ -148,15 +136,16 @@
           }
         }
 
-        goal_start = jsp["goal_des"]["start"].get<int>();
-
-        //Adding the desired final joint position
-        for(int i = 0; i < vector_props[0].size(); i++){
-            x_val[goal_start + i] = vector_props[0][i];
-          }
-
-        x_val[jsp["max_acc"]["start"].get<int>()] = double_props[1]; //setting maximum acceleration.
-        x_val[jsp["max_vel"]["start"].get<int>()] = double_props[0]; //setting maximum velocity
+        //Reading the value of properties
+        for(int i = 0; i < jsp["num_props"].get<int>(); i++){
+            Logger::log() << Logger::Debug << "Reading data from property " <<
+              jsp["props"][i]["name"].get<std::string>() << Logger::endl;
+            //assign the read properties to the OCP parameters
+            int prop_size = jsp[jsp["props"][i]["var"].get<std::string>()]["size"].get<int>();
+            for(int j = 0; j < prop_size; j++)
+              x_val[jsp[jsp["props"][i]["var"].get<std::string>()]
+                ["start"].get<int>() + j] = vector_props[i][j];
+        }
 
         // Allocate memory (thread-safe)
         Logger::log() << Logger::Debug << "Allocating memory" << Logger::endl;
@@ -172,10 +161,7 @@
 
         // Evaluation is thread-safe TODO: add error handling if the OCP fails to find a solution
         Logger::log() << Logger::Debug << "Evaluating casadi OCP function" << Logger::endl;
-
-        bool solver_status = casadi_c_eval_id(f_id, arg, res, iw, w, mem);
-        Logger::log() << Logger::Error << "Solver status = " << solver_status << Logger::endl;
-        if(solver_status){
+        if(casadi_c_eval_id(f_id, arg, res, iw, w, mem)){
           Logger::log() << Logger::Error << "OCP computation failed" << Logger::endl;
           return false;
         }
@@ -200,7 +186,7 @@
         }
       }
 
-      else if(sequence == p_horizon){
+      else if(sequence == p_horizon){ //TODO: the only piece of hardcoding
         for(i = 0; i < m_out_ports[2].size(); i++){
           m_out_ports[1][i] = 0;
           m_out_ports[2][i] = 0;

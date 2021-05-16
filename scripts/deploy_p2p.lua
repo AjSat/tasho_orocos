@@ -39,17 +39,16 @@ ocp:configure()
 ros:import("etasl_iohandler_jointstate")
 --Configuration
 --6511 is ROB_L 6512 is ROB_R
-ocp:getProperty("ocp_rate"):set(10) -- in Hz
-ocp:getProperty("num_joints"):set(7) -- in Hz
-
-
 fk_des = rtt.Variable("array")
 -- fk_des:fromtab({ 1.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, -1.0, 0.4, 0.4, 0.4}) --left
 fk_des:fromtab({ 1.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, -1.0, 0.4, 0.4, 0.4}) --left
 ocp:getProperty("goal_des"):set(fk_des)
-ocp:getProperty("max_vel"):set(120/180.0*3.14159)
-ocp:getProperty("max_acc"):set(240/180*3.14159)
-ocp:getProperty("joint_pos"):set(0)
+arr = rtt.Variable("array")
+arr:fromtab({50/180.0*3.14159,})
+ocp:getProperty("max_vel"):set(arr)
+arr2 = rtt.Variable("array")
+arr2:fromtab({120/180*3.14159,})
+ocp:getProperty("max_acc"):set(arr2)
 
 depl:setActivity("ocp", 0, 99, rtt.globals.ORO_SCHED_RT)
 ocp:setPeriod(0.1)
@@ -100,7 +99,7 @@ robot_sim:start()
 --configure hook of both components
 traj_interp:configure()
 traj_interp:start()
-for i = 1,2 do
+for i = 1,1 do
 sleep(0.1);
 ocp:start()
 sleep(6.0)
