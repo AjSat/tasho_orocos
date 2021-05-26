@@ -21,7 +21,7 @@ end
 
 iface_spec = {
    ports={
-      { name='joint_vel_out_l_cmsg', datatype='motion_control_msgs/JointVelocities', type='out', desc="joint velocity output as motion control msg" },
+      { name='joint_vel_out_cmsg', datatype='motion_control_msgs/JointVelocities', type='out', desc="joint velocity output as motion control msg" },
       { name='joint_vel_out_arr', datatype='array', type='out', desc="joint velocity output as an array" },
       { name='joint_pos_out', datatype='array', type='out', desc="joint position output" },
       { name='joint_pos_in_actual', datatype='array', type='in', desc="joint position read from robot joint encoder" },
@@ -49,7 +49,7 @@ iface=rttlib.create_if(iface_spec)
 iface.props.Ts:set(0.05)
 iface.props.ndof:set(14)
 iface.props.no_samples:set(0)
-iface.props.p_gain:set(0)
+iface.props.p_gain:set(0.1)
 iface.props.dt:set(1/250.0)
 
 time_start = 0
@@ -71,6 +71,8 @@ function configureHook()
   j_vel_vals_out = rtt.Variable("array")
   j_acc_vals = rtt.Variable("array")
   port_ein = rtt.Variable("string")
+  j_vel_out_tab = {0,0,0,0,0,0,0}
+  j_vel_out = rtt.Variable("motion_control_msgs/JointVelocities")
 
   arr_zero = {}
   for i = 1,ndof do
@@ -147,6 +149,13 @@ function updateHook()
      j_pos_vals_ref:fromtab(j_posr:totab())
    end
 
+   for i = 0,6 do
+      j_vel_out_tab[i+1] = j_vel_vals_command[i]
+   end
+   j_vel_out:fromtab({names = {}, velocities = j_vel_out_tab})
+
+
+
    -- fs, port_ein=iface.ports.event_in:read()
    -- if fs ~='NoData' then
    --   print("OCP finished")
@@ -158,13 +167,15 @@ function updateHook()
 
   -- print("position reference:")
   -- print(j_pos_vals_ref)
+  -- print("position actual:")
+  -- print(j_pos_vals_actual)
   -- print("velocity reference")
   -- print(j_vel_vals_ref)
   -- print("acceleration reference")
   -- print(j_acc_vals)
 
     iface.ports.joint_vel_out_arr:write(j_vel_vals_command) -- TODO add feedback for joint position error
-
+    iface.ports.joint_vel_out_cmsg:write(j_vel_out)
 end
 
 function stopHook()
