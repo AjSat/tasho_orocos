@@ -4,29 +4,13 @@
 #define TIMEOUT 500 // [ms]
 
 
-    MPCComponent::MPCComponent(const string &name) : TaskContext(name, PreOperational), p_numjoints(14), p_horizon(15), degrees_to_radians(M_PI / 180.0),  p_mpc_rate(20), time(0.0), wait(true)
+    MPCComponent::MPCComponent(const string &name) : TaskContext(name, PreOperational), p_numjoints(14), p_horizon(15), degrees_to_radians(M_PI / 180.0),  p_mpc_ts(20), time(0.0), wait(true)
     {
         //Adding properties
-        this->addProperty("mpc_rate", p_mpc_rate).doc("Control frequency of MPC");
-        this->addProperty("p_horizon", p_horizon).doc("Horizon size of the MPC");
-        this->addProperty("ocp_file", p_ocp_file).doc("The casadi file that will compute the OCP.");
-        this->addProperty("mpc_file", p_mpc_file).doc("The casadi file that will compute the MPC.");
-        this->addProperty("predict_file", p_predict_file).doc("The casadi file that will simulate the next state of MPC.");
-        this->addProperty("shift_file", p_shift_file).doc("The casadi file that will shift the MPC horizon by one step.");
-        //Adding ports
-        /// Input
+        this->addProperty("js_prop_file", p_js_prop_file).doc("The location to the json file containing all the info pertaining to MPC.");
         this->addPort("event_in", port_ein).doc("Events IN - eg supervisor");
-        this->addPort("q_actual", port_q_actual).doc("current joint positions [rad]");
-        this->addPort("qdot_actual", port_qdot_actual).doc("current joint velocities [rad/s]");
-
-        /// Output
         this->addPort("event_out", port_eout).doc("Events OUT - eg faults to supervisor");
-        this->addPort("q_command", port_q_command).doc("Desired joint positions [rad]");
-        this->addPort("qdot_command", port_qdot_command).doc("Desired joint velocities [rad/s]");
-        this->addPort("qddot_command", port_qddot_command).doc("Desired joint accelerations [rad/s^2]");
-
-        m_joint_states.name.resize(p_numjoints);
-        m_joint_states.position.resize(p_numjoints);
+        // this->addProperty("predict_file", p_predict_file).doc("The casadi file that will simulate the next state of MPC.");
 
         //Sanity check on integer types TODO: throw error if fails and move to header
         if (casadi_c_int_width()!=sizeof(casadi_int)) {
@@ -35,8 +19,6 @@
         if (casadi_c_real_width()!=sizeof(double)) {
           printf("Mismatch in double size\n");
         }
-
-
 
     }
 
@@ -48,6 +30,58 @@
     bool MPCComponent::configureHook()
     {
 
+      //Adding properties
+      FILE * pFile;
+      pFile = fopen (p_js_prop_file.c_str(), "r");
+      if (pFile == NULL) printf("Error opening file");
+      jsp = json::parse(pFile);
+
+      p_horizon = jsp["horizon"].get<int>();
+      p_mpc_ts = jsp["mpc_ts"].get<float>();
+      p_ocp_file = jsp["ocp_file"].get<std::string>();
+      p_mpc_file = jsp["mpc_file"].get<std::string>();
+      p_predict_file = jsp["pred_file"].get<std::string>();
+      p_term_cond_pos = jsp["term_cond_pos"].get<int>();
+      num_states = jsp["num_states"].get<int>();
+      num_controls = jsp["num_controls"].get<int>();
+
+      //Adding Properties
+      //Double type Properties
+      vector_props = new vector<double>[jsp["num_props"].get<int>()];
+      for(int i = 0; i < jsp["num_props"].get<int>(); i++){
+        this->addProperty(jsp["props"][i]["name"].get<std::string>(),
+          vector_props[i]).doc(jsp["props"][i]["desc"].get<std::string>());
+      }
+
+      //Adding ports
+      /// Input
+      num_inp_ports = jsp["num_inp_ports"].get<int>();
+      inp_ports = new InputPort<vector<double>>[num_inp_ports];
+      m_inp_ports = new vector<double>[num_inp_ports];
+      for(int i = 0; i < num_inp_ports; i++){
+        //Creating input ports
+        this->addPort(jsp["inp_ports"][i]["name"].get<std::string>(),
+          inp_ports[i]).doc(jsp["inp_ports"][i]["desc"].get<std::string>());
+        // Assigning memory and size to the message vectors of the port
+        m_inp_ports[i].resize(jsp[jsp["inp_ports"][i]["var"].get<std::string>()]
+          ["size"].get<int>(), 0);
+      }
+
+      /// Output
+      num_out_ports = jsp["num_out_ports"].get<int>();
+      out_ports = new OutputPort<vector<double>>[num_out_ports];
+      m_out_ports = new vector<double>[num_out_ports];
+      for(int i = 0; i < num_out_ports; i++){
+        //Creating output ports
+        this->addPort(jsp["out_ports"][i]["name"].get<std::string>(),
+          out_ports[i]).doc(jsp["out_ports"][i]["desc"].get<std::string>());
+        // Assigning memory and size to the message vectors of the port
+        m_out_ports[i].resize(jsp[jsp["out_ports"][i]["var"].get<std::string>()]
+          ["size"].get<int>(), 0);
+      }
+
+
+
       f_ret = casadi_c_push_file(p_ocp_file.c_str());
       if (f_ret) {
         cout << "Failed to load the ocp file " + p_ocp_file;
@@ -57,7 +91,15 @@
       f_id = casadi_c_id("ocp_fun");
       n_in = casadi_c_n_in_id(f_id);
       n_out = casadi_c_n_out_id(f_id);
-
+      const casadi_int *sp_i;
+      sp_i = casadi_c_sparsity_in_id(f_id, 0);
+      casadi_int nrow = *sp_i++; /* Number of rows */
+      casadi_int ncol = *sp_i++; /* Number of columns */
+      nnz = sp_i[ncol]; /* Number of nonzeros */
+      sp_i = casadi_c_sparsity_out_id(f_id, 0);
+      nrow = *sp_i++; /* Number of rows */
+      ncol = *sp_i++; /* Number of columns */
+      nnz_out = sp_i[ncol]; /* Number of nonzeros */
       sz_arg=n_in; sz_res=n_out; sz_iw=0; sz_w=0;
 
       casadi_c_work_id(f_id, &sz_arg, &sz_res, &sz_iw, &sz_w);
@@ -67,91 +109,79 @@
       Logger::In in(this->getName());
       Logger::log() << Logger::Debug << "Got work ids" << Logger::endl;
 
-          /* Allocate input/output buffers and work vectors*/
+      /* Allocate input/output buffers and work vectors*/
 
       res = new double*[sz_res];
+      arg = new const double*[sz_arg];
       iw = new casadi_int[sz_iw];
-      w = new double[70000];
+      w = new double[sz_w];
 
-      /* Function input and output */
-      //parameters that need to be set a0, q_dot0, s0, s_dot0 TODO: read all from orocos ports
-      double *q0 = new double[14];
-      double *q_dot0 = new double[14];
-
-      // Assign a fixed size and memory to the vectors associated with the ports
-      m_q_actual.assign(p_numjoints, 0);
-      m_qdot_actual.assign(p_numjoints, 0);
-      m_q_command.assign(p_numjoints, 0);
-      m_qd_command.assign(p_numjoints, 0);
-      m_qdd_command.assign(p_numjoints, 0);
-
-      if (port_q_actual.read(m_q_actual) != NoData){
-        // Logger::log() << Logger::Debug << "Read joint pos from robot_sim" << Logger::endl;
-        for(int i = 0; i<14; i++){
-          // Logger::log() << Logger::Debug << "Initializing the joint values = " << m_q_actual[i] << Logger::endl;
-          q0[i] = m_q_actual[i];
-        }
-      }
-      else{
-        double q0_def[14] = {-1.36542319,
-              -0.74822507,
-              2.05658987,
-              0.52732208,
-              2.4950726,
-              -0.93756902,
-              -1.71694542,
-              1.32087,
-              -0.77865726,
-              -2.04601662,
-              0.65292945,
-              -2.25832585,
-              -0.81930464,
-              1.00047389}; //Defining default values. TODO: remove
-        for(int i = 0; i<14; i++){
-          q0[i] = q0_def[i];
-        }
-      }
-      if (port_qdot_actual.read(m_qdot_actual) != NoData){
-        // Logger::log() << Logger::Debug << "Read joint vel from robot_sim" << Logger::endl;
-        for(int i = 0; i<14; i++){
-          // Logger::log() << Logger::Debug << "Initializing the joint vel values = " << m_qdot_actual[i] << Logger::endl;
-          q_dot0[i] = m_qdot_actual[i];
-        }
-      }
-      else{
-        double q_dot0_def[14] = {0,0,0,0,0,0,0,
-          0,0,0,0,0,0,0};
-        q_dot0 = q_dot0_def;
-      }
-      double s0[1] = {0};
-      double s_dot0[1] = {0};
-
-
-
-      x_val = new double[3000];
-      x_val2 = new double[3000];
-      res0 = new double[3000];
-      res2 = new double[3000];
-      for(int i = 0; i < 3000; i++){
+      x_val = new double[nnz];
+      res0 = new double[nnz_out];
+      for(int i = 0; i < nnz; i++){
         x_val[i] = 0;
-        x_val2[i] = 0;
         res0[i] = 0;
-        res2[i] = 0;
       }
 
-      //Initilializing the parameters to the correct values of x
-      int q0_start = 654;
-      int q_start = 0;
-      int q_size = 14;
-      for(int i = 0; i < q_size; i++){
-        x_val[q0_start + i] = q0[i];
-        for(int j = 0; j < p_horizon + 1; j++){
-          x_val[q_start + j*(p_horizon + 1) + i] = q0[i];
+      //load a prediction function into memory to simulate dynamics
+      f_ret = casadi_c_push_file(p_predict_file.c_str());
+      if (f_ret) {
+        cout << "Failed to load the mpc file " + p_mpc_file;
+        return -1;
+      }
+
+      pred_f_id = casadi_c_id("pred_fun");
+      casadi_int sz_argp, sz_resp, sz_iwp, sz_wp;
+      sz_argp = casadi_c_n_in_id(pred_f_id);
+      sz_resp = casadi_c_n_out_id(pred_f_id);
+      casadi_c_work_id(pred_f_id, &sz_argp, &sz_resp, &sz_iwp, &sz_wp);
+      printf("Work vector sizes:\n");
+      printf("sz_arg = %lld, sz_res = %lld, sz_iw = %lld, sz_w = %lld\n\n",
+          sz_argp, sz_resp, sz_iwp, sz_wp);
+      argp = new const double*[sz_argp];
+      resp = new double*[sz_resp];
+      iwp = new casadi_int[sz_iwp];
+      wp = new double[sz_wp];
+      argp[0] = x_val;
+      argp[1] = res0;
+      resp[0] = x_val;
+      Logger::log() << Logger::Debug << "Allocating memory for pred fun" << Logger::endl;
+      casadi_c_incref_id(pred_f_id);
+      memp = casadi_c_checkout_id(pred_f_id);
+
+      Logger::log() << Logger::Debug << "Exiting configuration hook" << Logger::endl;
+      return true;
+
+    }
+
+    bool MPCComponent::startHook()
+    {
+
+      Logger::In in(this->getName());
+      Logger::log() << Logger::Info << "Entering start hook" << Logger::endl;
+
+      // Read messages from the input ports
+      for(int i = 0; i < num_inp_ports; i++){
+        if (inp_ports[i].read(m_inp_ports[i]) != NoData){
+          Logger::log() << Logger::Debug << "Reading data from port " <<
+            jsp["inp_ports"][i]["name"].get<std::string>() << Logger::endl;
+          //assign the read messages to the OCP parameters
+          for(int j = 0; j < m_inp_ports[i].size(); j++)
+            x_val[jsp[jsp["inp_ports"][i]["var"].get<std::string>()]
+              ["start"].get<int>() + j] = m_inp_ports[i][j];
+
+
+          // warm start the states as well if specified
+          if (jsp["inp_ports"][i]["warm_start"].get<int>()){
+            std::string wvar = jsp["inp_ports"][i]["wvar"].get<std::string>();
+            int var_start = jsp[wvar]["start"].get<int>();
+            for (int j = 0; j < p_horizon + 1; j++){
+              for (int k = 0; k < m_inp_ports[i].size(); k++){
+                x_val[var_start + j*jsp[wvar]["jump"].get<int>() + k] = m_inp_ports[i][k];
+              }
+            }
+          }
         }
-      }
-
-      for(int i = 0; i < 28; i++){
-        printf("%f\n",x_val[i]);
       }
 
       // Allocate memory (thread-safe)
@@ -160,16 +190,13 @@
 
       /* Evaluate the function */
       arg[0] = x_val;
-      arg[1] = x_val2;
       res[0] = res0;
-      res[1] = res2;
       Logger::log() << Logger::Debug << "Creating arguments for casadi function" << Logger::endl;
       // Checkout thread-local memory (not thread-safe)
       mem = casadi_c_checkout_id(f_id);
 
       // Evaluation is thread-safe TODO: add error handling if the OCP fails to find a solution
       Logger::log() << Logger::Debug << "Evaluating casadi OCP function" << Logger::endl;
-
       casadi_c_eval_id(f_id, arg, res, iw, w, mem);
 
       // Load the MPC function if different from the ocp Function
@@ -178,7 +205,7 @@
         /* Free memory (thread-safe) */
         casadi_c_decref_id(f_id);
         // Clear the last loaded Function(s) from the stack
-        casadi_c_pop();
+        // casadi_c_pop();
 
         //Load the mpc file into memory
         f_ret = casadi_c_push_file(p_mpc_file.c_str());
@@ -197,148 +224,99 @@
         printf("Work vector sizes:\n");
         printf("sz_arg = %lld, sz_res = %lld, sz_iw = %lld, sz_w = %lld\n\n",
             sz_arg, sz_res, sz_iw, sz_w);
+        res = new double*[sz_res];
+        arg = new const double*[sz_arg];
+        arg[0] = x_val;
+        res[0] = res0;
+        iw = new casadi_int[sz_iw];
+        w = new double[sz_w];
         Logger::In in(this->getName());
         Logger::log() << Logger::Debug << "Got work ids for the MPC function" << Logger::endl;
-
         //Reallocating the space for the work-vector (which may differ with the algorithm)
-        // delete [] w;
-        // w = new double[sz_w];
         casadi_c_incref_id(f_id);
         mem = casadi_c_checkout_id(f_id);
 
       }
-
-      Logger::log() << Logger::Debug << "Exiting configuration hook" << Logger::endl;
+      Logger::log() << Logger::Debug << "Exiting start hook" << Logger::endl;
       return true;
-    }
-
-    bool MPCComponent::startHook()
-    {
-
-            Logger::log() << Logger::Debug << "Entering startHook" << Logger::endl;
-            Logger::In in(this->getName());
-        return true;
     }
 
     void MPCComponent::updateHook()
     {
 
       Logger::log() << Logger::Debug << "Entering updateHook" << Logger::endl;
-      term_cond_pos = 682;
+
       //Apply the control inputs
 
       port_writer();
       if(!terminated){
-        //Write the q, qd and qdd commands into the respective ports
-        //Implementing warm-starting. Hardcoded now, will shift to using the json thing.
-        //warm-starting  the states
-        for(int i = 0; i<14; i++){
+
+        //shift the states
+        for (int k = 0; k < num_states; k++){
+          std::string state_name = jsp["states"][k].get<std::string>();
+          int var_start = jsp[state_name]["start"].get<int>();
+          int var_size = jsp[state_name]["size"].get<int>();
+          int var_jump = jsp[state_name]["jump"].get<int>();
+          for(int i = 0; i < p_horizon; i++){
+            for(int j = 0; j < var_size; j++){
+              x_val[var_start + i*var_jump + j] = res0[var_start + (i+1)*var_jump + j];
+            }
+          }
+          int i = p_horizon;
           for(int j = 0; j<14;j++){
-            if(i < 13){
-              x_val[i*14 + j] = res0[(i+1)*14 + j]; //warmstarting q
-              x_val[196 + i*14 + j] = res0[196 + (i+1)*14 + j]; //warmstarting q_dot
-            }
-            else{ //initializing at the last stage
-              x_val[i*14 + j] = res0[(i)*14 + j]; //warmstarting q
-              x_val[196 + i*14 + j] = res0[196 + (i)*14 + j]; //warmstarting q_dot
-            }
-          }
-          if (i < 13){
-            x_val[392 + i] = res0[392 + i + 1]; //warmstart s
-            x_val[406 + i] = res0[406 + i + 1]; //warmstart s_dot
-          }
-          else{
-            x_val[392 + i] = res0[392 + i]; //warmstart s
-            x_val[406 + i] = res0[406 + i]; //warmstart s_dot
+            x_val[var_start + i*var_jump + j] = res0[var_start + i*var_jump + j];
           }
         }
 
-        //warm-starting the control variables
-        for(int i = 0; i<13; i++){
+        //shifting controls
+        for (int k = 0; k < num_controls; k++){
+          std::string control_name = jsp["controls"][k].get<std::string>();
+          int var_start = jsp[control_name]["start"].get<int>();
+          int var_size = jsp[control_name]["size"].get<int>();
+          int var_jump = jsp[control_name]["jump"].get<int>();
+          for(int i = 0; i < p_horizon-1; i++){
+            for(int j = 0; j < var_size; j++){
+              x_val[var_start + i*var_jump + j] = res0[var_start + (i+1)*var_jump + j];
+            }
+          }
+          int i = p_horizon-1;
           for(int j = 0; j<14;j++){
-            if(i < 12){
-              x_val[420 + i*14 + j] = res0[420 + (i+1)*14 + j]; //warmstarting q_ddot
-            }
-            else{
-              x_val[420 + i*14 + j] = res0[420 + (i)*14 + j];
-            }
-          }
-          for(int j = 0; j<2;j++){
-            if(i < 12){
-              x_val[615 + i*2 + j] = res0[615 + (i+1)*2 + j]; //warmstarting slack_1
-            }
-            else{
-              x_val[615 + i*2 + j] = res0[615 + (i)*2 + j]; //warmstarting slack_1
-            }
-          }
-          if(i < 12){
-            x_val[602 + i] = res0[602 + i + 1]; //warmstart s_ddot
-            x_val[641 + i] = res0[641 + i + 1]; //warmstart slack_2
-          }
-          else{
-            x_val[602 + i] = res0[602 + i]; //warmstart s_ddot
-            x_val[641 + i] = res0[641 + i]; //warmstart slack_2
+            x_val[var_start + i*var_jump + j] = res0[var_start + i*var_jump + j];
           }
         }
 
-        //Initializing the starting parameters
-        for(int i = 0; i<14; i++){
-          x_val[654 + i] = x_val[i];
-          x_val[668 + i] = x_val[196 + i];
-          x_val[682] = x_val[392];
-          x_val[683] = x_val[406];
-        }
-        if (port_q_actual.read(m_q_actual) == NoData){
-          Logger::log() << Logger::Error << "joint position input port in MPC read no data " << Logger::endl;
-        }
-        else{
-          Logger::log() << Logger::Debug << "Read joint pos from robot_sim" << Logger::endl;
-          for(int i = 0; i<14; i++){
-            // Logger::log() << Logger::Debug << "jpos from  " << x_val[654 + i] << " to " << m_q_actual[i] + res0[196 + i]*0.045 + 0.5*0.0025*res0[420 + i] <<  Logger::endl;
-            x_val[654 + i] = m_q_actual[i] + res0[196 + i]*0.045 + 0.5*0.0025*res0[420 + i];
-          }
-        }
-        if (port_qdot_actual.read(m_qdot_actual) == NoData){
-          Logger::log() << Logger::Error << "joint velocity input port in MPC read no data " << Logger::endl;
-        }
-        else{
-          // Logger::log() << Logger::Debug << "Read joint vel from robot_sim" << Logger::endl;
-          for(int i = 0; i<14; i++){
-            // Logger::log() << Logger::Debug << "jval read at the instant = " << m_qdot_actual[i] << Logger::endl;
-            // Logger::log() << Logger::Debug << "jvel from " << x_val[668 + i] << " to " << m_qdot_actual[i] + 0.05*res0[420 + i] << Logger::endl;
-            x_val[668 + i] = m_qdot_actual[i] + 0.045*res0[420 + i];
+        // Reading the sensor messages and updating the parameters
+        // Read messages from the input ports and assign to parameters
+        for(int i = 0; i < num_inp_ports; i++){
+          if (inp_ports[i].read(m_inp_ports[i]) != NoData){
+            Logger::log() << Logger::Debug << "Reading data from port " <<
+              jsp["inp_ports"][i]["name"].get<std::string>() << Logger::endl;
+            //assign the read messages to the OCP parameters
+            for(int j = 0; j < m_inp_ports[i].size(); j++)
+              x_val[jsp[jsp["inp_ports"][i]["var"].get<std::string>()]
+                ["start"].get<int>() + j] = m_inp_ports[i][j];
           }
         }
 
-        printf("s value is : %f", x_val[682]);
+
+        Logger::log() << Logger::Debug << "Evaluating dynamics :" << Logger::endl;
+        casadi_c_eval_id(pred_f_id, argp, resp, iwp, wp, memp);
+        Logger::log() << Logger::Debug << "Finished dynamics evaluation." << Logger::endl;
 
         //Monitor if the termination criteria is reached
-        if(x_val[term_cond_pos] >= 12.14){
+        if(x_val[p_term_cond_pos] >= 12.14){
           Logger::log() << Logger::Debug << "*** MPC termination criteria reached: writing event ***" << Logger::endl;
           port_eout.write(p_mpc_file + "_mpc_done");
           terminated = true;
-          for(int i = 0; i < 14; i++){ //Assume that tasks switch as zero velocity
-            m_qd_command[i] = 0;
-            m_qdd_command[i] = 0;
-          }
+          //TODO: set the acceleration to zero
         }
-
-
-        // if(flag == true){
-        // arg[0] = res0;
-        // res[0] = x_val;
-        // flag = false;
-        // }
-        // else{
-        //   arg[0] = x_val;
-        //   res[0] = res0;
-        //   flag = true;
-        // }
+        Logger::log() << Logger::Debug << "Evaluating mpc fun :" << Logger::endl;
         casadi_c_eval_id(f_id, arg, res, iw, w, mem);
+        Logger::log() << Logger::Debug << "Evaluated mpc fun :" << Logger::endl;
       }
 
 
-        this->trigger(); //TODO: shouldn't this trigger be removed?
+        // this->trigger(); //TODO: shouldn't this trigger be removed?
     }
 
     void MPCComponent::stopHook()
@@ -356,15 +334,14 @@
 
     //A function to read the relevant values from xvals and write into ports
     void MPCComponent::port_writer(){
-      //read values for q_command, q_d_command and q_dd_command
-      for(int i = 0; i < 14; i++){
-        m_q_command[i] = res0[i];
-        m_qd_command[i] = res0[196 + i];
-        m_qdd_command[i] = res0[420 + i];
+      // Reading the message to send to output ports
+      for(int i = 0; i < num_out_ports; i++){
+        out_port_var = jsp["out_ports"][i]["var"].get<std::string>();
+        for(int j = 0; j < m_out_ports[i].size(); j++)
+          m_out_ports[i][j] = res0[jsp[out_port_var]["start"].get<int>() + j];
       }
-      port_q_command.write(m_q_command);
-      port_qdot_command.write(m_qd_command);
-      port_qddot_command.write(m_qdd_command);
+      //Writing messages to the output ports
+      for(int i = 0; i < num_out_ports; i++) out_ports[i].write(m_out_ports[i]);
     }
     void predictFunction(){
       // Code to predict the future states based on the dynamics function

@@ -41,13 +41,9 @@ mpc = depl:getPeer("mpc")
 
 --Configuration
 --6511 is ROB_L 6512 is ROB_R
-mpc:getProperty("mpc_rate"):set(20) -- in Hz
-mpc:getProperty("p_horizon"):set(13) -- in Hz
 dir = rtt.provides("ros"):find("yumi_tasho")
-mpc:getProperty("ocp_file"):set(dir .. "/casadi_files/ocp_fun.casadi")
-mpc:getProperty("mpc_file"):set(dir .. "/casadi_files/mpc_fun.casadi")
-mpc:getProperty("predict_file"):set(dir .. "/casadi_files/jac_fun_rob.casadi")
-mpc:getProperty("shift_file"):set(dir .. "/casadi_files/jac_fun_rob.casadi")
+mpc:getProperty("js_prop_file"):set(dir .. "/casadi_files/mpc_fun.json")
+mpc:configure()
 
 depl:setActivity("mpc", 0, 5, rtt.globals.ORO_SCHED_RT)
 mpc:setPeriod(0.05)
@@ -112,7 +108,7 @@ robot_sim:start()
 -- depl:setActivity("Reporter", 1/samplefreq, 99, rtt.globals.ORO_SCHED_RT)
 
 --configure hook of both components
-mpc:configure()
+-- mpc:configure()
 traj_interp:configure()
 -- Reporter:configure()
 --
