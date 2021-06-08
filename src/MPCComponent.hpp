@@ -50,22 +50,13 @@ using json = nlohmann::json;
     /// Properties
     int num_inp_ports, num_out_ports, num_states, num_controls;
     string p_js_prop_file;
-    const unsigned int p_numjoints;
-    string p_egm_ip;
-    unsigned int p_egm_port;
-    string p_baseframe;
-    string p_effort_origin;
     string p_ocp_file;
     string p_mpc_file;
     string p_predict_file;
-    string p_shift_file;
     const double degrees_to_radians;
-    // TODO: egm_rate is currently not used!
-    double p_mpc_ts;
     int p_horizon, p_term_cond_pos;
     casadi_int nnz, nnz_out;
 
-    //const unsigned int egm_rate;  // [Hz] (EGM communication rate, specified by the EGMActJoint RAPID instruction)
     unsigned int sequence_number; // [-] (sequence number of a received EGM message)
     double time;                  // [seconds] (elapsed time during an EGM communication session)
 
@@ -82,34 +73,7 @@ using json = nlohmann::json;
     // Internal, mem alloc
     vector<double> *m_inp_ports;
     vector<double> *m_out_ports;
-
-    // Creating a vector of doubles for the Properties
     vector<double> *vector_props;
-
-    // Internal, mem alloc
-    geometry_msgs::Pose m_cart_pose;
-    sensor_msgs::JointState m_joint_states;
-    vector<double> m_qdes;
-    vector<double> m_q_actual;
-    vector<double> m_t_actual;
-    vector<double> m_qdot_actual;
-    vector<double> m_q_command;
-    vector<double> m_qd_command;
-    vector<double> m_qdd_command;
-
-    // Port Interface
-    InputPort<vector<double>> port_qdes;
-    InputPort<vector<double>> port_qdot_actual;
-    InputPort<vector<double>> port_q_actual;
-
-    // Output port
-    OutputPort<vector<double>> port_qdot_command;
-    OutputPort<vector<double>> port_q_command;
-    OutputPort<vector<double>> port_qddot_command;
-    OutputPort<vector<double>> port_t_actual;
-    // OutputPort<motion_control_msgs::JointEfforts> port_joint_ext_jnt;
-    // OutputPort<sensor_msgs::JointState> port_joint_state;
-    // OutputPort<geometry_msgs::Pose> port_cart_pose;
 
     // Port Interface
     InputPort<string> port_ein;

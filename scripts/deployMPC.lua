@@ -12,7 +12,9 @@ rttlib.color = true
 
 tc=rtt.getTC()
 depl=tc:getPeer("Deployer")
-samplefreq = 250
+samplefreq = 160
+mpc_freq = 20
+simulation = true
 
 depl:import("rtt_rospack")
 depl:import("rtt_ros")
@@ -24,16 +26,11 @@ depl:import("rtt_motion_control_msgs")
 gs = rtt.provides()
 ros = gs:provides("ros")
 depl:import('rtt_rosnode')
-ros:import("fbsched")
 ros:import("rtt_rospack")
 depl:import("yumi_tasho")
 depl:import("rtt_sensor_msgs")
 depl:import("rtt_motion_control_msgs")
---
 
--- deploy scheduler (just one component right now):
---depl:loadComponent("fbs", "FBSched")
---fbs=depl:getPeer("fbs")
 
 depl:loadComponent("mpc", "MPCComponent")
 mpc = depl:getPeer("mpc")
@@ -45,99 +42,117 @@ dir = rtt.provides("ros"):find("yumi_tasho")
 mpc:getProperty("js_prop_file"):set(dir .. "/casadi_files/mpc_fun.json")
 mpc:configure()
 
-depl:setActivity("mpc", 0, 5, rtt.globals.ORO_SCHED_RT)
-mpc:setPeriod(0.05)
+depl:setActivity("mpc", 1/mpc_freq, 99, rtt.globals.ORO_SCHED_RT)
 cp = rtt.Variable("ConnPolicy")
 -- cp.type=1   -- type buffered
 -- cp.size=1  -- buffer size
 
-depl:loadComponent("traj_interp", "OCL::LuaComponent")
-traj_interp = depl:getPeer("traj_interp")
-traj_interp:exec_file(dir .. "/scripts/vel_traj_follow.lua")
--- depl:setMasterSlaveActivity("fbs", "traj_gen")
-depl:setActivity("traj_interp", 0, 1, rtt.globals.ORO_SCHED_RT)
-traj_interp:setPeriod(0.004)
+depl:loadComponent("traj_interp_left", "OCL::LuaComponent")
+traj_interp_left = depl:getPeer("traj_interp_left")
+traj_interp_left:exec_file(dir .. "/scripts/vel_traj_follow.lua")
+traj_interp_left:getProperty("dt"):set(1/samplefreq)
+traj_interp_left:getProperty("ndof"):set(7)
+depl:setActivity("traj_interp_left", 1/samplefreq, 1, rtt.globals.ORO_SCHED_RT)
 
-depl:loadComponent("robot_sim", "OCL::LuaComponent")
-robot_sim = depl:getPeer("robot_sim")
-robot_sim:exec_file(dir .. "/scripts/simple_robot_sim.lua")
-depl:setActivity("robot_sim", 0, 0, rtt.globals.ORO_SCHED_RT)
-robot_sim:setPeriod(0.004)
-j_init = rtt.Variable("array")
-j_init:fromtab({-1.36542319, -0.74822507, 2.05658987, 0.52732208, 2.4950726,
- -0.93756902, -1.71694542, 1.32087, -0.77865726, -2.04601662, 0.65292945,
- -2.25832585, -0.81930464, 1.00047389})
-robot_sim:getProperty("initial_position"):set(j_init)
-
--- Connecting the peers
-depl:connectPeers("robot_sim","traj_interp")
-depl:connectPeers("robot_sim","mpc")
-depl:connectPeers("traj_interp","mpc")
-
--- Connecting the ports between the components
-depl:connect("traj_interp.joint_vel_out_arr", "robot_sim.jointvel", cp)
-depl:connect("robot_sim.jointpos", "mpc.q_actual", cp)
-depl:connect("robot_sim.jointvel_out", "mpc.qdot_actual", cp)
-depl:connect("traj_interp.joint_pos_in_ref", "mpc.q_command", cp)
-depl:connect("traj_interp.joint_vel_in_ref", "mpc.qdot_command", cp)
-depl:connect("traj_interp.joint_acc_in_ref", "mpc.qddot_command", cp)
-ros:import("etasl_iohandler_jointstate")
-depl:stream("robot_sim.jointpos", ros:topic("/joint_states_from_orocos"))
-robot_sim:configure()
-robot_sim:start()
---
---     --depl:connectPeers("yumi","fbs")
---     --depl:connect("yumi.triggerPort","fbs.trigger", cp)
+-- Creating a controller for the right arm
+depl:loadComponent("traj_interp_right", "OCL::LuaComponent")
+traj_interp_right = depl:getPeer("traj_interp_right")
+traj_interp_right:exec_file(dir .. "/scripts/vel_traj_follow.lua")
+traj_interp_right:getProperty("dt"):set(1/samplefreq)
+traj_interp_right:getProperty("ndof"):set(7)
+depl:setActivity("traj_interp_right", 1/samplefreq, 1, rtt.globals.ORO_SCHED_RT)
 
 
--- --Reporting the joint velocity inputs and the recorded joint desired_positions
--- depl:loadComponent("Reporter", "OCL::FileReporting")
--- Reporter = depl:getPeer("Reporter")
--- depl:connectPeers("yumi", "Reporter");
--- Reporter:reportPort("yumi", "q_actual")
--- Reporter:reportPort("yumi", "q_dot_desired");
--- Reporter:getProperty("ReportFile"):set("right_1_8.dat")
--- --depl:setMasterSlaveActivity("fbs", "Reporter")
--- --sched_order=fbs:getProperty("sched_order")
--- --depl:connectPeers("Reporter","fbs")
--- ---depl:connectPeers("traj_gen","fbs")
--- --sched_order:get():resize(2)
--- --sched_order[0]="traj_gen"
--- --sched_order[1]="Reporter"
--- --fbs:start()
--- depl:setActivity("Reporter", 1/samplefreq, 99, rtt.globals.ORO_SCHED_RT)
+if simulation then
+  depl:loadComponent("robot_sim_left", "OCL::LuaComponent")
+  robot_sim_left = depl:getPeer("robot_sim_left")
+  robot_sim_left:exec_file(dir .. "/scripts/simple_robot_sim.lua")
+  depl:setActivity("robot_sim_left", 1/samplefreq, 0, rtt.globals.ORO_SCHED_RT)
+  j_init_left = rtt.Variable("array")
+  j_init_left:fromtab({-1.36542319, -0.74822507, 2.05658987, 0.52732208, 2.4950726,
+  -0.93756902, -1.71694542})
+  robot_sim_left:getProperty("initial_position"):set(j_init_left)
+  -- Connecting the ports between the components
+  depl:connect("traj_interp_left.joint_vel_out_arr", "robot_sim_left.jointvel", cp)
+  depl:connect("robot_sim_left.jointpos", "mpc.q_actual_left", cp)
+  -- depl:connect("robot_sim_left.jointpos", "traj_interp_left.joint_pos_in_actual", cp)
+  depl:connect("robot_sim_left.jointvel_out", "mpc.qdot_actual_left", cp)
+  ros:import("etasl_iohandler_jointstate")
+  depl:stream("robot_sim_left.jointpos", ros:topic("/joint_states_left_from_orocos"))
+  robot_sim_left:configure()
+  robot_sim_left:start()
 
---configure hook of both components
--- mpc:configure()
-traj_interp:configure()
--- Reporter:configure()
---
--- yumi:start()
--- sleep(0.01) -- Some time lag because startHook in traj_gen might need to read some value from yumi component for starting.
--- traj_gen:start()
--- sleep(0.01) -- Some time lag because startHook in traj_gen might need to read some value from yumi component for starting.
--- Reporter:start()
---
---
---
---
--- print("configuration of the orocos components done")
---
---
--- --yumi:gripVacuumRight()
--- --sleep(3)
--- --yumi:gripVacuumRight()
---
-traj_interp:start()
+  j_init_right = rtt.Variable("array")
+  j_init_right:fromtab({1.32087, -0.77865726, -2.04601662, 0.65292945,
+  -2.25832585, -0.81930464, 1.00047389})
+  depl:loadComponent("robot_sim_right", "OCL::LuaComponent")
+  robot_sim_right = depl:getPeer("robot_sim_right")
+  robot_sim_right:exec_file(dir .. "/scripts/simple_robot_sim.lua")
+  depl:setActivity("robot_sim_right", 1/samplefreq, 0, rtt.globals.ORO_SCHED_RT)
+  robot_sim_right:getProperty("initial_position"):set(j_init_right)
+  -- Connecting the ports between the components
+  depl:connect("traj_interp_right.joint_vel_out_arr", "robot_sim_right.jointvel", cp)
+  depl:connect("robot_sim_right.jointpos", "mpc.q_actual_right", cp)
+  -- depl:connect("robot_sim_right.jointpos", "traj_interp_right.joint_pos_in_actual", cp)
+  depl:connect("robot_sim_right.jointvel_out", "mpc.qdot_actual_right", cp)
+  ros:import("etasl_iohandler_jointstate")
+  depl:stream("robot_sim_right.jointpos", ros:topic("/joint_states_right_from_orocos"))
+  robot_sim_right:configure()
+  robot_sim_right:start()
+
+else
+  depl:import("abb_egm_driver")
+  --Loading component for the left arm
+  depl:loadComponent("yumi_l", "EGM::EGMDriver")
+  yumi_l = depl:getPeer("yumi_l")
+  --Loading component for the right arm
+  depl:loadComponent("yumi_r", "EGM::EGMDriver")
+  yumi_r = depl:getPeer("yumi_r")
+
+
+  --Configuration
+  --6511 is ROB_L 6512 is ROB_R
+  yumi_l:getProperty("simulation"):set(false)
+  yumi_l:getProperty("egm_ip"):set("192.168.125.1")
+  yumi_l:getProperty("egm_port"):set(6511)
+  depl:setActivity("yumi_l", 0, 99, rtt.globals.ORO_SCHED_RT)
+  yumi_r:getProperty("simulation"):set(false)
+  yumi_r:getProperty("egm_ip"):set("192.168.125.1")
+  yumi_r:getProperty("egm_port"):set(6512)
+  depl:setActivity("yumi_r", 0, 99, rtt.globals.ORO_SCHED_RT)
+
+  depl:connect("yumi_l.q_actual", "traj_interp_left.joint_pos_in_actual", cp)
+  depl:connect("yumi_l.q_actual", "mpc.q_actual_left", cp)
+  depl:connect("yumi_l.q_dot_actual", "mpc.qdot_actual_left", cp)
+  depl:connect("yumi_r.q_actual", "traj_interp_right.joint_pos_in_actual", cp)
+  depl:connect("yumi_r.q_actual", "mpc.q_actual_right", cp)
+  depl:connect("yumi_r.q_dot_actual", "mpc.qdot_actual_right", cp)
+  depl:connect("yumi_l.JointVelocityCommand", "traj_interp_left.joint_vel_out_cmsg", cp)
+  depl:connect("yumi_r.JointVelocityCommand", "traj_interp_right.joint_vel_out_cmsg", cp)
+end
+
+depl:connect("traj_interp_right.joint_pos_in_ref", "mpc.q_command_right", cp)
+depl:connect("traj_interp_right.joint_vel_in_ref", "mpc.qdot_command_right", cp)
+depl:connect("traj_interp_right.joint_acc_in_ref", "mpc.qddot_command_right", cp)
+depl:connect("traj_interp_left.joint_pos_in_ref", "mpc.q_command_left", cp)
+depl:connect("traj_interp_left.joint_vel_in_ref", "mpc.qdot_command_left", cp)
+depl:connect("traj_interp_left.joint_acc_in_ref", "mpc.qddot_command_left", cp)
+
+traj_interp_left:configure()
+traj_interp_left:start()
+traj_interp_right:configure()
+traj_interp_right:start()
+
 mpc:start()
-
-
-
 sleep(5.0)
 -- --
 mpc:stop()
-robot_sim:stop()
-traj_interp:stop()
+if simulation then
+  robot_sim_left:stop()
+  robot_sim_right:stop()
+end
+traj_interp_left:stop()
+traj_interp_right:stop()
 mpc:cleanup()
 
 -- Reporter:stop()

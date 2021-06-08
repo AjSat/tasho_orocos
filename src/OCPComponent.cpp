@@ -182,14 +182,17 @@
           out_port_var = jsp["out_ports"][i]["var"].get<std::string>();
           for(int j = 0; j < m_out_ports[i].size(); j++)
             m_out_ports[i][j] = res0[jsp[out_port_var]["start"].get<int>() + j +
-              sequence*m_out_ports[i].size()];
+              sequence*jsp[jsp["out_ports"][i]["var"].get<std::string>()]
+                ["jump"].get<int>()];
         }
       }
 
       else if(sequence == p_horizon){ //TODO: the only piece of hardcoding
         for(i = 0; i < m_out_ports[2].size(); i++){
-          m_out_ports[1][i] = 0;
           m_out_ports[2][i] = 0;
+          m_out_ports[3][i] = 0;
+          m_out_ports[4][i] = 0;
+          m_out_ports[5][i] = 0;
         }
         Logger::log() << Logger::Debug << "OCP finished: writing event" << Logger::endl;
         Logger::log() << Logger::Debug << jsp["fun_name"].get<std::string>() + "_done" << Logger::endl;

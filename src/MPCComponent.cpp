@@ -4,13 +4,12 @@
 #define TIMEOUT 500 // [ms]
 
 
-    MPCComponent::MPCComponent(const string &name) : TaskContext(name, PreOperational), p_numjoints(14), p_horizon(15), degrees_to_radians(M_PI / 180.0),  p_mpc_ts(20), time(0.0), wait(true)
+    MPCComponent::MPCComponent(const string &name) : TaskContext(name, PreOperational), degrees_to_radians(M_PI / 180.0), time(0.0), wait(true)
     {
         //Adding properties
         this->addProperty("js_prop_file", p_js_prop_file).doc("The location to the json file containing all the info pertaining to MPC.");
         this->addPort("event_in", port_ein).doc("Events IN - eg supervisor");
         this->addPort("event_out", port_eout).doc("Events OUT - eg faults to supervisor");
-        // this->addProperty("predict_file", p_predict_file).doc("The casadi file that will simulate the next state of MPC.");
 
         //Sanity check on integer types TODO: throw error if fails and move to header
         if (casadi_c_int_width()!=sizeof(casadi_int)) {
@@ -37,7 +36,6 @@
       jsp = json::parse(pFile);
 
       p_horizon = jsp["horizon"].get<int>();
-      p_mpc_ts = jsp["mpc_ts"].get<float>();
       p_ocp_file = jsp["ocp_file"].get<std::string>();
       p_mpc_file = jsp["mpc_file"].get<std::string>();
       p_predict_file = jsp["pred_file"].get<std::string>();
@@ -46,7 +44,6 @@
       num_controls = jsp["num_controls"].get<int>();
 
       //Adding Properties
-      //Double type Properties
       vector_props = new vector<double>[jsp["num_props"].get<int>()];
       for(int i = 0; i < jsp["num_props"].get<int>(); i++){
         this->addProperty(jsp["props"][i]["name"].get<std::string>(),
@@ -80,10 +77,7 @@
           ["size"].get<int>(), 0);
       }
 
-
-
-      f_ret = casadi_c_push_file(p_ocp_file.c_str());
-      if (f_ret) {
+      if (casadi_c_push_file(p_ocp_file.c_str())) {
         cout << "Failed to load the ocp file " + p_ocp_file;
         return -1;
       }
@@ -124,9 +118,8 @@
       }
 
       //load a prediction function into memory to simulate dynamics
-      f_ret = casadi_c_push_file(p_predict_file.c_str());
-      if (f_ret) {
-        cout << "Failed to load the mpc file " + p_mpc_file;
+      if (casadi_c_push_file(p_predict_file.c_str())) {
+        cout << "Failed to load the mpc file " + p_predict_file;
         return -1;
       }
 
@@ -208,8 +201,7 @@
         // casadi_c_pop();
 
         //Load the mpc file into memory
-        f_ret = casadi_c_push_file(p_mpc_file.c_str());
-        if (f_ret) {
+        if (casadi_c_push_file(p_mpc_file.c_str())) {
           cout << "Failed to load the mpc file " + p_mpc_file;
           return -1;
         }
@@ -235,6 +227,9 @@
         //Reallocating the space for the work-vector (which may differ with the algorithm)
         casadi_c_incref_id(f_id);
         mem = casadi_c_checkout_id(f_id);
+        Logger::log() << Logger::Debug << "Evaluating mpc fun :" << Logger::endl;
+        casadi_c_eval_id(f_id, arg, res, iw, w, mem);
+        Logger::log() << Logger::Debug << "Evaluated mpc fun :" << Logger::endl;
 
       }
       Logger::log() << Logger::Debug << "Exiting start hook" << Logger::endl;
@@ -314,9 +309,6 @@
         casadi_c_eval_id(f_id, arg, res, iw, w, mem);
         Logger::log() << Logger::Debug << "Evaluated mpc fun :" << Logger::endl;
       }
-
-
-        // this->trigger(); //TODO: shouldn't this trigger be removed?
     }
 
     void MPCComponent::stopHook()
@@ -343,12 +335,6 @@
       //Writing messages to the output ports
       for(int i = 0; i < num_out_ports; i++) out_ports[i].write(m_out_ports[i]);
     }
-    void predictFunction(){
-      // Code to predict the future states based on the dynamics function
-    }
 
-    void shift(){
-      // Code to shift x_vals for proper warm-starting of the MPC
-    }
 
 ORO_CREATE_COMPONENT(MPCComponent)
