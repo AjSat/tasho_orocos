@@ -41,6 +41,7 @@ iface_spec = {
       { name='joint_vel', datatype='array', desc="joint velocity" },
       { name='joint_acc', datatype='array', desc="joint acceleration" },
       { name='dt', datatype='double', desc="sample time of the controller" },
+      { name='decay_rate', datatype='double', desc="decay rate of velocity if MPC fails to send signal on time" },
    }
 }
 
@@ -49,11 +50,14 @@ iface=rttlib.create_if(iface_spec)
 iface.props.Ts:set(0.05)
 iface.props.ndof:set(14)
 iface.props.no_samples:set(0)
-iface.props.p_gain:set(0.1)
+iface.props.p_gain:set(0.0)
 iface.props.dt:set(1/250.0)
+iface.props.decay_rate:set(0.5)
 
 time_start = 0
 
+counter_max = 0
+counter = 0
 
 function configureHook()
 
@@ -62,6 +66,7 @@ function configureHook()
   ndof= iface.props.ndof:get()
   no_samples= iface.props.no_samples:get()
   dt = iface.props.dt:get()
+  decay_rate = iface.props.decay_rate:get()
 
   j_pos_vals_actual = rtt.Variable("array")
   j_vel_vals_actual = rtt.Variable("array")
@@ -115,6 +120,7 @@ function startHook()
     j_pos_vals_ref:fromtab(j_pos:totab()) --Initializing to this assuming that
     -- the reference from MPC also would have the same value.
   end
+  counter_max = Ts/dt
   return true
 end
 
@@ -133,7 +139,9 @@ function updateHook()
   end
   -- Reading references from the MPC if available
   fs,j_accr=iface.ports.joint_acc_in_ref:read()
-  if fs ~='NoData' and (j_accr[0] ~= j_acc_vals[0] or j_accr[7] ~= j_acc_vals[7]) then
+  if fs ~='NoData' and (j_accr[0] ~= j_acc_vals[0]) then
+
+    counter = 0
    -- print("Reading acceleration reference")
    j_acc_vals:fromtab(j_accr:totab())
 
@@ -149,20 +157,21 @@ function updateHook()
      j_pos_vals_ref:fromtab(j_posr:totab())
    end
 
-   for i = 0,6 do
+   for i = 0,ndof-1 do
       j_vel_out_tab[i+1] = j_vel_vals_command[i]
    end
    j_vel_out:fromtab({names = {}, velocities = j_vel_out_tab})
 
 
+  else
+    counter = counter + 1
 
-   -- fs, port_ein=iface.ports.event_in:read()
-   -- if fs ~='NoData' then
-   --   print("OCP finished")
-   -- end
-
-
-
+    if counter >= counter_max - 1 then
+      for i = 0,ndof-1 do
+        j_acc_vals[i] = 0
+        j_vel_vals_ref[i] = j_vel_vals_ref[i]*decay_rate
+      end
+    end
   end
 
   -- print("position reference:")
