@@ -82,7 +82,7 @@
         return -1;
       }
       // Identify a Function by name
-      f_id = casadi_c_id("ocp_fun");
+      f_id = casadi_c_id(jsp["ocp_fun_name"].get<std::string>().c_str());
       n_in = casadi_c_n_in_id(f_id);
       n_out = casadi_c_n_out_id(f_id);
       const casadi_int *sp_i;
@@ -123,7 +123,7 @@
         return -1;
       }
 
-      pred_f_id = casadi_c_id("pred_fun");
+      pred_f_id = casadi_c_id(jsp["pred_fun_name"].get<std::string>().c_str());
       casadi_int sz_argp, sz_resp, sz_iwp, sz_wp;
       sz_argp = casadi_c_n_in_id(pred_f_id);
       sz_resp = casadi_c_n_out_id(pred_f_id);
@@ -206,7 +206,7 @@
           return -1;
         }
 
-        f_id = casadi_c_id("mpc_fun");
+        f_id = casadi_c_id(jsp["mpc_fun_name"].get<std::string>().c_str());
         n_in = casadi_c_n_in_id(f_id);
         n_out = casadi_c_n_out_id(f_id);
 

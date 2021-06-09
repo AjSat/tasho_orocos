@@ -43,6 +43,7 @@ mpc:getProperty("js_prop_file"):set(dir .. "/casadi_files/mpc_fun.json")
 mpc:configure()
 
 depl:setActivity("mpc", 1/mpc_freq, 99, rtt.globals.ORO_SCHED_RT)
+depl:setPeriod(1/mpc_freq)
 cp = rtt.Variable("ConnPolicy")
 -- cp.type=1   -- type buffered
 -- cp.size=1  -- buffer size
@@ -50,24 +51,26 @@ cp = rtt.Variable("ConnPolicy")
 depl:loadComponent("traj_interp_left", "OCL::LuaComponent")
 traj_interp_left = depl:getPeer("traj_interp_left")
 traj_interp_left:exec_file(dir .. "/scripts/vel_traj_follow.lua")
+traj_interp_left:getProperty("Ts"):set(1/mpc_freq)
 traj_interp_left:getProperty("dt"):set(1/samplefreq)
 traj_interp_left:getProperty("ndof"):set(7)
-depl:setActivity("traj_interp_left", 1/samplefreq, 1, rtt.globals.ORO_SCHED_RT)
+depl:setActivity("traj_interp_left", 1/samplefreq, 0, rtt.globals.ORO_SCHED_OTHER)
 
 -- Creating a controller for the right arm
 depl:loadComponent("traj_interp_right", "OCL::LuaComponent")
 traj_interp_right = depl:getPeer("traj_interp_right")
 traj_interp_right:exec_file(dir .. "/scripts/vel_traj_follow.lua")
+traj_interp_left:getProperty("Ts"):set(1/mpc_freq)
 traj_interp_right:getProperty("dt"):set(1/samplefreq)
 traj_interp_right:getProperty("ndof"):set(7)
-depl:setActivity("traj_interp_right", 1/samplefreq, 1, rtt.globals.ORO_SCHED_RT)
+depl:setActivity("traj_interp_right", 1/samplefreq, 0, rtt.globals.ORO_SCHED_OTHER)
 
 
 if simulation then
   depl:loadComponent("robot_sim_left", "OCL::LuaComponent")
   robot_sim_left = depl:getPeer("robot_sim_left")
   robot_sim_left:exec_file(dir .. "/scripts/simple_robot_sim.lua")
-  depl:setActivity("robot_sim_left", 1/samplefreq, 0, rtt.globals.ORO_SCHED_RT)
+  depl:setActivity("robot_sim_left", 1/samplefreq, 0, rtt.globals.ORO_SCHED_OTHER)
   j_init_left = rtt.Variable("array")
   j_init_left:fromtab({-1.36542319, -0.74822507, 2.05658987, 0.52732208, 2.4950726,
   -0.93756902, -1.71694542})
@@ -88,7 +91,7 @@ if simulation then
   depl:loadComponent("robot_sim_right", "OCL::LuaComponent")
   robot_sim_right = depl:getPeer("robot_sim_right")
   robot_sim_right:exec_file(dir .. "/scripts/simple_robot_sim.lua")
-  depl:setActivity("robot_sim_right", 1/samplefreq, 0, rtt.globals.ORO_SCHED_RT)
+  depl:setActivity("robot_sim_right", 1/samplefreq, 0, rtt.globals.ORO_SCHED_OTHER)
   robot_sim_right:getProperty("initial_position"):set(j_init_right)
   -- Connecting the ports between the components
   depl:connect("traj_interp_right.joint_vel_out_arr", "robot_sim_right.jointvel", cp)
@@ -115,11 +118,11 @@ else
   yumi_l:getProperty("simulation"):set(false)
   yumi_l:getProperty("egm_ip"):set("192.168.125.1")
   yumi_l:getProperty("egm_port"):set(6511)
-  depl:setActivity("yumi_l", 0, 99, rtt.globals.ORO_SCHED_RT)
+  depl:setActivity("yumi_l", 0, 99, rtt.globals.ORO_SCHED_OTHER)
   yumi_r:getProperty("simulation"):set(false)
   yumi_r:getProperty("egm_ip"):set("192.168.125.1")
   yumi_r:getProperty("egm_port"):set(6512)
-  depl:setActivity("yumi_r", 0, 99, rtt.globals.ORO_SCHED_RT)
+  depl:setActivity("yumi_r", 0, 99, rtt.globals.ORO_SCHED_OTHER)
 
   depl:connect("yumi_l.q_actual", "traj_interp_left.joint_pos_in_actual", cp)
   depl:connect("yumi_l.q_actual", "mpc.q_actual_left", cp)
