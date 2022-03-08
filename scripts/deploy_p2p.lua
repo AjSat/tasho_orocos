@@ -26,9 +26,9 @@ ros = gs:provides("ros")
 ros:import("rtt_rospack")
 depl:import("rtt_std_msgs")
 
-ros:import("yumi_tasho")
-depl:import("yumi_tasho")
-dir = ros:find("yumi_tasho")
+ros:import("tasho_orocos")
+depl:import("tasho_orocos")
+dir = ros:find("tasho_orocos")
 depl:import("rtt_sensor_msgs")
 depl:import("rtt_motion_control_msgs")
 

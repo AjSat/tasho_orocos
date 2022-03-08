@@ -27,7 +27,7 @@ gs = rtt.provides()
 ros = gs:provides("ros")
 depl:import('rtt_rosnode')
 ros:import("rtt_rospack")
-depl:import("yumi_tasho")
+depl:import("tasho_orocos")
 depl:import("rtt_sensor_msgs")
 depl:import("rtt_motion_control_msgs")
 
@@ -38,7 +38,7 @@ mpc = depl:getPeer("mpc")
 
 --Configuration
 --6511 is ROB_L 6512 is ROB_R
-dir = rtt.provides("ros"):find("yumi_tasho")
+dir = rtt.provides("ros"):find("tasho_orocos")
 mpc:getProperty("js_prop_file"):set(dir .. "/casadi_files/mpc_fun.json")
 mpc:configure()
 

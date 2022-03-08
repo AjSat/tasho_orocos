@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.6)
-project(yumi_tasho)
+project(tasho_orocos)
 
 #Call cmake/catkin_make with the CASADI_DIR pointing to the casadi directory. See example below.
 ##catkin_make -DCASADI_DIR=/home/ajay/env37/lib/python3.7/site-packages/casadi/
@@ -7,7 +7,7 @@ project(yumi_tasho)
 # export CASADI_DIR=/home/ajay/env37/lib/python3.7/site-packages/casadi
 
 ## Compile as C++11, supported in ROS Kinetic and newer
-add_compile_options(-std=c++11)
+add_compile_options(-std=c++11 -O3)
 #add_compile_options(-lcasadi)
 
 ## Find catkin macros and libraries

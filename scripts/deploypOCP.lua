@@ -10,7 +10,7 @@ end
 require("rttlib")
 require("rttros")
 require "utils"
-rtt.setLogLevel("Error")
+rtt.setLogLevel("Debug")
 rttlib.color = true
 gs = rtt.provides()
 tc=rtt.getTC()
@@ -34,22 +34,11 @@ depl:import("rtt_motion_control_msgs")
 depl:loadComponent("ocp", "OCPComponent")
 ocp = depl:getPeer("ocp")
 dir = ros:find("tasho_orocos")
-print(dir)
-ocp:getProperty("js_prop_file"):set(dir .. "/casadi_files/homing_ocp_fun2_property.json")
+ocp:getProperty("js_prop_file"):set(dir .. "/casadi_files/pOCP.json")
 ocp:configure()
 ros:import("etasl_iohandler_jointstate")
 --Configuration
 --6511 is ROB_L 6512 is ROB_R
-home_pos = rtt.Variable("array")
-home_pos:fromtab({ -0.19690, -2.33, 1.95, 0.6580, 0.2390, 0.3770, -0.4250, 0, -2.26, -2.35, 0.52, 0.025, 0.749, 0,})
-ocp:getProperty("goal_des"):set(home_pos)
-arr = rtt.Variable("array")
-arr:fromtab({50/180.0*3.14159,})
-ocp:getProperty("max_vel"):set(arr)
-arr2 = rtt.Variable("array")
-arr2:fromtab({120/180*3.14159,})
-ocp:getProperty("max_acc"):set(arr2)
-
 
 
 -- ocp:setPeriod(0.1)
@@ -77,8 +66,8 @@ if simulation then
 
   -- robot_sim_left:setPeriod(0.004)
   j_init_left = rtt.Variable("array")
-  j_init_left:fromtab({-1.36542319, -0.74822507, 2.05658987, 0.52732208, 2.4950726,
-   -0.93756902, -1.71694542})
+  j_init_left:fromtab({-0.02212281, -1.21743917 , 0.97259966,  0.6210452,   1.14685807,  0.73834654,
+   0.14849121})
   robot_sim_left:getProperty("initial_position"):set(j_init_left)
   -- robot_sim_right:setPeriod(0.004)
 
@@ -99,8 +88,8 @@ if simulation then
   robot_sim_right = depl:getPeer("robot_sim_right")
   robot_sim_right:exec_file(dir .. "/scripts/simple_robot_sim.lua")
   j_init_right = rtt.Variable("array")
-  j_init_right:fromtab({1.32087, -0.77865726, -2.04601662, 0.65292945,
-  -2.25832585, -0.81930464, 1.00047389})
+  j_init_right:fromtab({0.28077024, -0.8564657,  -1.3960127,   0.45227472, -1.0744522,   0.32881946,
+  -0.15277545})
   robot_sim_right:getProperty("initial_position"):set(j_init_right)
   depl:connect("traj_interp_right.joint_vel_out_arr", "robot_sim_right.jointvel", cp)
   depl:connect("robot_sim_right.jointpos", "ocp.q_actual_right", cp)

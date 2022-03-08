@@ -13,7 +13,7 @@ end
 require("rttlib")
 require("rttros")
 require "utils"
-rtt.setLogLevel("Error")
+rtt.setLogLevel("Debug")
 rttlib.color = true
 gs = rtt.provides()
 tc=rtt.getTC()
@@ -29,8 +29,8 @@ ros = gs:provides("ros")
 ros:import("rtt_rospack")
 depl:import("rtt_std_msgs")
 
-ros:import("yumi_tasho")
-depl:import("yumi_tasho")
+ros:import("tasho_orocos")
+depl:import("tasho_orocos")
 depl:import("rtt_sensor_msgs")
 depl:import("rtt_motion_control_msgs")
 
@@ -42,7 +42,7 @@ ros:import("etasl_iohandler_jointstate")
 ocp:getProperty("ocp_rate"):set(10) -- in Hz
 ocp:getProperty("num_joints"):set(7) -- in Hz
 ocp:getProperty("horizon"):set(40) -- number of sampling steps
-dir = ros:find("yumi_tasho")
+dir = ros:find("tasho_orocos")
 ocp:getProperty("ocp_file"):set(dir .. "/casadi_files/leftp2p_ocp_fun.casadi")
 ocp:getProperty("ocp_fun"):set("leftp2p_ocp_fun")
 

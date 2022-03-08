@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>yumi_tasho</name>
+  <name>tasho_orocos</name>
   <version>0.0.0</version>
   <description>The yumi_tasho package</description>
 
